@@ -133,11 +133,11 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 
 | 代号 | 机型 |
 |---|---|
-| `TM2424`（默认） | Xiaomi Book Pro 14 (2026) |
+| `TM2425`（默认） | Redmi Book Pro 16 (2026) |
 | `TM2309` | Redmi Book 16 (2024) |
 
 **命令行选项**：
-- `--model`：指定伪装机型，默认 `TM2424`
+- `--model`：指定伪装机型，默认 `TM2425`
 
 代码：[`src/patches/device_spoof.rs`](src/patches/device_spoof.rs)
 

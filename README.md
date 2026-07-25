@@ -58,7 +58,7 @@ MiPCM_CLI.exe audio apply --mode wifi    # 无线模式
 MiPCM_CLI.exe audio revert
 
 # 设备伪装
-MiPCM_CLI.exe device apply --model TM2424
+MiPCM_CLI.exe device apply --model TM2425
 MiPCM_CLI.exe device revert
 
 # 安装小米电脑管家

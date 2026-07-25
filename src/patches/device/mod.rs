@@ -13,7 +13,7 @@ const REG_SUBKEY: &str = r"Software\SmartSharePatch";
 const REG_VALUE: &str = "SpoofDevice";
 
 /// 默认机型。
-pub const DEFAULT_MODEL: &str = "TM2424";
+pub const DEFAULT_MODEL: &str = "TM2425";
 
 /// 预置机型。
 pub struct ModelPreset {
@@ -22,6 +22,10 @@ pub struct ModelPreset {
 }
 
 pub const PRESETS: &[ModelPreset] = &[
+    ModelPreset {
+        code: "TM2425",
+        name: "Redmi Book Pro 14 (2026)",
+    },
     ModelPreset {
         code: "TM2424",
         name: "Xiaomi Book Pro 14 (2026)",

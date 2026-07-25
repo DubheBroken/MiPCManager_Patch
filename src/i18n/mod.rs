@@ -113,8 +113,8 @@ tr_table!(tr_zh, {
     "patch.camera" => "摄像头弹窗",
     "patch.audio" => "音频流转",
     "patch.device" => "设备伪装",
-    "patch.smbios" => "Lyra SMBIOS (Experimental)",
-    "patch.dual-nic" => "Lyra 双网卡 (Experimental)",
+    "patch.smbios" => "Lyra SMBIOS (实验性)",
+    "patch.dual-nic" => "Lyra 双网卡 (实验性)",
     "patch.locale.detail" => "地区伪装 (micont_rtm.dll)",
     "patch.camera.detail" => "摄像头弹窗抑制 (PcControlCenter.dll)",
     "patch.audio.detail" => "音频流转广播模式",
@@ -163,7 +163,7 @@ tr_table!(tr_zh, {
     "cli.arg.dir" => "指定版本目录 (默认自动探测) ",
     "cli.arg.no_wifi_route" => "不自动管理 Wi-Fi 本地子网优先路由 (无线模式下用于修复双网卡同网段断流) ",
     "cli.arg.dry_run" => "仅诊断, 不执行修复",
-    "cli.arg.model" => "机型代号 (默认 TM2424) ",
+    "cli.arg.model" => "机型代号 (默认 TM2425) ",
     "cli.arg.installer" => "显式指定 .exe 安装包",
     "cli.arg.url" => "从 HTTP(S) 地址下载安装包",
 
@@ -442,7 +442,7 @@ tr_table!(tr_en, {
     "cli.arg.dir" => "Specify version directory (auto-detect by default)",
     "cli.arg.no_wifi_route" => "Don't auto-manage Wi-Fi local-subnet route (used in wireless mode for dual-NIC same-subnet fix)",
     "cli.arg.dry_run" => "Diagnose only, don't execute fix",
-    "cli.arg.model" => "Model code (default TM2424)",
+    "cli.arg.model" => "Model code (default TM2425)",
     "cli.arg.installer" => "Explicitly specify .exe installer",
     "cli.arg.url" => "Download from HTTP(S) URL",
 

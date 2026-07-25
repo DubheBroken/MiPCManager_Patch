@@ -16,7 +16,7 @@ use anyhow::{Context, Result, bail};
 use std::path::Path;
 
 pub const TARGET_DLL: &str = "micont_rtm.dll";
-pub const DEFAULT_MODEL: &str = "TM2424";
+pub const DEFAULT_MODEL: &str = "TM2425";
 
 const SECTION_NAME: &str = ".mipatch";
 const SECTION_CHARACTERISTICS: u32 = 0x6000_0020;

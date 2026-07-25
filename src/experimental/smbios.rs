@@ -148,6 +148,7 @@ impl SmbiosFieldRole {
             Self::Type1Manufacturer | Self::Type2Manufacturer => "XIAOMI",
             Self::Type2Product => model_code,
             Self::Type1ProductName => match model_code {
+                "TM2425" => "Redmi Book Pro 16 2026",
                 "TM2424" => "Xiaomi Book Pro 14 2026",
                 "TM2309" => "Redmi Book 16 2024",
                 other => other, // 原样返回，由调用方处理长度
@@ -241,11 +242,11 @@ mod tests {
             .iter()
             .find(|f| f.role == SmbiosFieldRole::Type2Product)
             .unwrap();
-        assert_eq!(t2.role.target_value("TM2424"), "TM2424");
+        assert_eq!(t2.role.target_value("TM2425"), "TM2425");
         let t1m = fields
             .iter()
             .find(|f| f.role == SmbiosFieldRole::Type1Manufacturer)
             .unwrap();
-        assert_eq!(t1m.role.target_value("TM2424"), "XIAOMI");
+        assert_eq!(t1m.role.target_value("TM2425"), "XIAOMI");
     }
 }

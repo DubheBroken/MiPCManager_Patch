@@ -126,7 +126,7 @@ enum AudioAction {
 enum DeviceAction {
     /// 应用设备伪装
     Apply {
-        /// 机型代号（默认 TM2424）
+        /// 机型代号（默认 TM2425）
         #[arg(long, default_value = device_spoof::DEFAULT_MODEL)]
         model: String,
         /// 指定版本目录（默认自动探测）
@@ -148,7 +148,7 @@ enum DeviceAction {
 enum SmbiosAction {
     /// 应用 SMBIOS 设备身份伪装
     Apply {
-        /// 机型代号（默认 TM2424）
+        /// 机型代号（默认 TM2425）
         #[arg(long, default_value = smbios_spoof::DEFAULT_MODEL)]
         model: String,
         /// 指定目标 DLL 路径（默认自动探测安装目录）
