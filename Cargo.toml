@@ -1,6 +1,6 @@
 [package]
 name = "mipcmanager_patch"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2024"
 description = "小米电脑管家 (MiPCManager) 功能增强补丁工具：原生 DLL 字符串补丁 + .NET 方法体重定位补丁"
 
@@ -11,23 +11,36 @@ path = "src/lib.rs"
 [[bin]]
 name = "MiPCM_CLI"
 path = "src/main.rs"
+required-features = ["cli"]
 
 [[bin]]
 name = "MiPCM_GUI"
-path = "src/ui/gui/main.rs"
+path = "src/ui/gui/app.rs"
+required-features = ["gui"]
+
+[features]
+default = ["cli", "gui"]
+cli = ["dep:ratatui", "dep:crossterm"]
+gui = ["dep:slint", "dep:rfd"]
 
 [dependencies]
 anyhow = "1"
-clap = { version = "4", features = ["derive"] }
-ratatui = "0.29"
-crossterm = "0.28"
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+clap = { version = "4", default-features = false, features = ["derive", "help", "usage", "std"] }
+
+# TUI (optional, gated by "cli" feature)
+ratatui = { version = "0.30", optional = true, default-features = false, features = ["crossterm_0_29", "macros", "underline-color"] }
+crossterm = { version = "0.29", optional = true, default-features = false, features = ["events"] }
+
+# GUI (optional, gated by "gui" feature)
+slint = { version = "1.17", optional = true, default-features = false, features = ["backend-winit", "renderer-software", "compat-1-2"] }
+rfd = { version = "0.17", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
-sysinfo = "0.39"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_Globalization",
     "Win32_Security",
     "Win32_System_Diagnostics_Debug",
     "Win32_System_Diagnostics_ToolHelp",
@@ -38,20 +51,14 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
-# 轻量即时模式 GUI（mipcm_gui）：glow 后端，体积可控。
-eframe = { version = "0.35", default-features = false, features = [
-    "glow",
-    "default_fonts",
-] }
-egui = "0.35"
-ico = "0.5"
-rfd = "0.17"
 
 [build-dependencies]
 embed-resource = "3.0.11"
+slint-build = "1.17"
 
 [profile.release]
-opt-level = "z"
-lto = true
 strip = true
-panic = "abort"
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
