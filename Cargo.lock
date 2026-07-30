@@ -2948,7 +2948,7 @@ dependencies = [
 
 [[package]]
 name = "mipcmanager_patch"
-version = "1.7.1"
+version = "1.7.2"
 dependencies = [
  "anyhow",
  "clap",

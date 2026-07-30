@@ -36,6 +36,13 @@ fn main() {
     let model = Rc::new(VecModel::from(presets));
     app.set_model_presets(ModelRc::from(model));
 
+    let codes: Vec<SharedString> = ds::PRESETS
+        .iter()
+        .map(|p| SharedString::from(p.code))
+        .collect();
+    let codes_model = Rc::new(VecModel::from(codes));
+    app.set_model_codes(ModelRc::from(codes_model));
+
     refresh(&app);
 
     setup_callbacks(&app, lang);
