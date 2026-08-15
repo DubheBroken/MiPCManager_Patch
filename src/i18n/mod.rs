@@ -188,7 +188,7 @@ tr_table!(tr_zh, {
 
     // ── 安装包分类 ──
     "install.kind.manager" => "小米电脑管家 (XiaomiPCManager)",
-    "install.kind.continuity" => "小米互联 / 互联互通 (PcContinuity)",
+    "install.kind.continuity" => "小米互联 / 互联互通 (HyperConnect / PcContinuity)",
 
     // ── 安装 GUI ──
     "install.title" => "安装小米电脑管家 / 小米互联",
@@ -467,7 +467,7 @@ tr_table!(tr_en, {
 
     // ── 安装包分类 ──
     "install.kind.manager" => "MiPCManager (XiaomiPCManager)",
-    "install.kind.continuity" => "MiContinuity / Interconnection (PcContinuity)",
+    "install.kind.continuity" => "MiContinuity / Interconnection (HyperConnect / PcContinuity)",
 
     // ── 安装 GUI ──
     "install.title" => "Install MiPCManager / MiContinuity",

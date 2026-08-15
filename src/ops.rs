@@ -97,12 +97,14 @@ pub fn status_lines() -> Vec<String> {
     }
     if let Some(root) = continuity_root {
         out.push(String::new());
-        out.push("-- PcContinuity（小米互联 / 互联互通，仅地区伪装）--".to_string());
+        out.push("-- 小米互联 / 互联互通（HyperConnect / PcContinuity，仅地区伪装）--".to_string());
         out.push(format!("安装根目录：{}", root.display()));
         match install::latest_version_dir(&root) {
             Ok(version) => {
                 out.push(format!("最新版本目录：{}", version.display()));
-                push_file_status(&version.join(locale::TARGET_DLL), &mut out);
+                let runtime_dir = install::runtime_native_dir(&version);
+                out.push(format!("运行时目录：{}", runtime_dir.display()));
+                push_file_status(&runtime_dir.join(locale::TARGET_DLL), &mut out);
                 out.push("  摄像头、音频流转和设备伪装：当前版本不可用".to_string());
             }
             Err(error) => out.push(format!("（无法确定版本目录：{error}）")),
@@ -579,7 +581,8 @@ pub fn resolve_locale_dll_from_roots(
     for root in [manager_root, continuity_root].into_iter().flatten() {
         match install::latest_version_dir(root) {
             Ok(version) => {
-                let dll = version.join(locale::TARGET_DLL);
+                // HyperConnect 2.0 的 DLL 位于 resources\native-interconnect\win32 子目录。
+                let dll = install::runtime_native_dir(&version).join(locale::TARGET_DLL);
                 if dll.exists() {
                     return Ok(dll);
                 }
@@ -635,7 +638,7 @@ pub fn resolve_full_version_dir_from_roots(
         return install::latest_version_dir(root);
     }
     if continuity_root.is_some() {
-        bail!("PcContinuity 暂时仅支持地区伪装，其他功能不可用");
+        bail!("小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用");
     }
     bail!("未找到 XiaomiPCManager 安装目录")
 }
@@ -663,7 +666,7 @@ pub fn ensure_full_feature_path_supported(
     let normalized_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let normalized_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     if normalized_path.starts_with(&normalized_root) {
-        bail!("PcContinuity 暂时仅支持地区伪装，其他功能不可用");
+        bail!("小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用");
     }
     Ok(())
 }
@@ -774,6 +777,23 @@ mod tests {
     }
 
     #[test]
+    fn locale_auto_resolution_uses_hyperconnect_nested_layout() {
+        let hyperconnect_root = fixture_root("locale_hyperconnect");
+        let win32 = hyperconnect_root
+            .join("2.0.0.429")
+            .join("resources")
+            .join("native-interconnect")
+            .join("win32");
+        fs::create_dir_all(&win32).unwrap();
+        fs::write(win32.join(locale::TARGET_DLL), b"fixture").unwrap();
+
+        let resolved = resolve_locale_dll_from_roots(None, Some(&hyperconnect_root)).unwrap();
+
+        assert_eq!(resolved, win32.join(locale::TARGET_DLL));
+        fs::remove_dir_all(hyperconnect_root).unwrap();
+    }
+
+    #[test]
     fn full_features_are_unavailable_for_pc_continuity_only() {
         let continuity_root = fixture_root("full_feature_continuity");
         fs::create_dir_all(continuity_root.join("1.1.2.36")).unwrap();
@@ -782,7 +802,7 @@ mod tests {
             .unwrap_err()
             .to_string();
 
-        assert!(error.contains("PcContinuity 暂时仅支持地区伪装"));
+        assert!(error.contains("暂时仅支持地区伪装"));
         fs::remove_dir_all(continuity_root).unwrap();
     }
 
@@ -796,7 +816,7 @@ mod tests {
             .unwrap_err()
             .to_string();
 
-        assert!(error.contains("PcContinuity 暂时仅支持地区伪装"));
+        assert!(error.contains("暂时仅支持地区伪装"));
         fs::remove_dir_all(continuity_root).unwrap();
     }
 

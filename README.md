@@ -89,9 +89,9 @@ MiPCM_CLI.exe install --installer "D:\path\to\installer.exe"
 </details>
 
 <details>
-<summary>只安装了「小米互联」能用吗？</summary>
+<summary>只安装了「小米互联 / 互联互通」能用吗？</summary>
 
-「小米互联」(PcContinuity) 仅支持**地区伪装**功能。摄像头弹窗、音频流转、设备伪装等功能需要完整版「小米电脑管家」(XiaomiPCManager)。
+「小米互联 / 互联互通」(PcContinuity / HyperConnect 2.0) 仅支持**地区伪装**功能。摄像头弹窗、音频流转、设备伪装等功能需要完整版「小米电脑管家」(XiaomiPCManager)。
 </details>
 
 <details>

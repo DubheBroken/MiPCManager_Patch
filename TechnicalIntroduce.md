@@ -15,10 +15,13 @@
 
 ## 总体设计
 
-工具自动探测 `XiaomiPCManager` 与 `PcContinuity` 的最新安装版本：
+工具自动探测 `XiaomiPCManager` 与小米互联 / 互联互通（`PcContinuity` / `HyperConnect`）的最新安装版本：
 
 - **XiaomiPCManager**（完整版）：位于 `C:\Program Files\MI\XiaomiPCManager`，支持所有补丁功能。工具启动时自动关闭其相关进程。
-- **PcContinuity**（小米互联）：位于 `C:\Program Files\MI\PcContinuity`，目前**仅支持地区伪装**。不做启动时全量进程关闭。
+- **PcContinuity**（小米互联）：位于 `C:\Program Files\MI\PcContinuity`，目前**仅支持地区伪装**。
+- **HyperConnect**（小米互联互通 2.0）：位于 `C:\Program Files\MI\HyperConnect`，原生互联 DLL 在版本目录下的 `resources\native-interconnect\win32` 子目录（`micont_rtm.dll`、`micont_service.exe` 等），同样**仅支持地区伪装**。
+
+小米互联 / 互联互通两个产品均不做启动时全量进程关闭（仅按功能关闭对应进程）。
 
 各补丁动作执行前按功能关闭对应进程作为兜底：
 
@@ -47,7 +50,7 @@
 
 **实现**：以宽字符串 `Geo\0` 作锚点，把其后 10 字节的 `Name\0\0` 等长替换为 `XCN\0\0`（不移位、不依赖偏移）。本工具输出与作者黄金参考 `micont_rtm.patched.dll` 逐字节一致（已验证）。
 
-**自动探测**：优先使用 `XiaomiPCManager` 的最新版本；如未找到可用目标，则使用 `PcContinuity` 的最新版本。
+**自动探测**：优先使用 `XiaomiPCManager` 的最新版本；如未找到可用目标，则使用小米互联 / 互联互通（`HyperConnect` 优先，`PcContinuity` 兜底）的最新版本。`HyperConnect` 2.0 的 DLL 位于版本目录的 `resources\native-interconnect\win32` 子目录，工具会自动定位（已针对 2.0.0.429 验证特征仍命中）。
 
 **命令行选项**：
 - `--region`：指定地区值，默认 `CN`

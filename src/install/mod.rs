@@ -8,17 +8,38 @@ use std::path::{Path, PathBuf};
 
 /// 默认安装根目录。
 pub const DEFAULT_INSTALL_ROOT: &str = r"C:\Program Files\MI\XiaomiPCManager";
-/// 新版「互联互通」的默认安装根目录（暂时仅支持地区伪装）。
+/// 旧版「互联互通」的默认安装根目录（暂时仅支持地区伪装）。
 pub const DEFAULT_PC_CONTINUITY_ROOT: &str = r"C:\Program Files\MI\PcContinuity";
+/// 新版「互联互通 2.0」的默认安装根目录（HyperConnect）。
+pub const DEFAULT_HYPERCONNECT_ROOT: &str = r"C:\Program Files\MI\HyperConnect";
+/// 新版 HyperConnect 的原生互联 DLL 相对版本目录的子路径。
+pub const HYPERCONNECT_NATIVE_REL: &str = r"resources\native-interconnect\win32";
 
 /// 探测安装根目录。
 pub fn find_install_root() -> Option<PathBuf> {
     find_product_root(DEFAULT_INSTALL_ROOT, "XiaomiPCManager")
 }
 
-/// 探测新版 PcContinuity 安装根目录。
+/// 探测小米互联 / 互联互通安装根目录（新版 HyperConnect 2.0 优先，旧版 PcContinuity 兜底）。
 pub fn find_pc_continuity_root() -> Option<PathBuf> {
+    // HyperConnect 2.0 新路径优先
+    if let Some(root) = find_product_root(DEFAULT_HYPERCONNECT_ROOT, "HyperConnect") {
+        return Some(root);
+    }
     find_product_root(DEFAULT_PC_CONTINUITY_ROOT, "PcContinuity")
+}
+
+/// 版本目录下的原生互联运行目录（目标 DLL 所在目录）。
+///
+/// - 新版 HyperConnect 2.0：`<版本目录>\resources\native-interconnect\win32`
+/// - 旧版 PcContinuity / XiaomiPCManager：版本目录自身
+pub fn runtime_native_dir(version_dir: &Path) -> PathBuf {
+    let nested = version_dir.join(HYPERCONNECT_NATIVE_REL);
+    if nested.is_dir() {
+        nested
+    } else {
+        version_dir.to_path_buf()
+    }
 }
 
 fn find_product_root(default_root: &str, product_dir: &str) -> Option<PathBuf> {
@@ -77,12 +98,19 @@ fn parse_version(s: &str) -> Option<Vec<u64>> {
 /// 优先关闭安装目录内运行的进程，再用已知进程名兜底，避免版本更新新增子进程后漏关。
 #[cfg(windows)]
 pub fn kill_mipcmanager_processes(known_names: &[&str]) -> usize {
-    let Some(install_root) = find_install_root() else {
+    // 启动时全量关闭严格限定在各产品根目录内，
+    // 避免两个产品共用 micont_service 等进程名时误伤对方。
+    let mut roots = Vec::new();
+    if let Some(root) = find_install_root() {
+        roots.push(root);
+    }
+    if let Some(root) = find_pc_continuity_root() {
+        roots.push(root);
+    }
+    if roots.is_empty() {
         return 0;
-    };
-    // 启动时全量关闭严格限定在 XiaomiPCManager 根目录，
-    // 避免两个产品共用 micont_service 等进程名时误伤 PcContinuity。
-    kill_processes(known_names, &[install_root], false)
+    }
+    kill_processes(known_names, &roots, false)
 }
 
 #[cfg(not(windows))]

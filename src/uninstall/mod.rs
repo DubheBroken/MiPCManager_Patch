@@ -203,10 +203,10 @@ pub fn uninstall_xiaomi_pc_manager(root: &Path, log: &mut Vec<String>) -> Result
     Ok(())
 }
 
-/// 卸载小米互联 / PcContinuity（完整流程）。
+/// 卸载小米互联 / 互联互通（PcContinuity / HyperConnect，完整流程）。
 pub fn uninstall_pc_continuity(root: &Path, log: &mut Vec<String>) -> Result<()> {
     log.push(format!(
-        "开始卸载小米互联 / PcContinuity：{}",
+        "开始卸载小米互联 / 互联互通（HyperConnect / PcContinuity）：{}",
         root.display()
     ));
 
@@ -244,7 +244,7 @@ pub fn uninstall_pc_continuity(root: &Path, log: &mut Vec<String>) -> Result<()>
     log.push("  正在清理文件…".to_string());
     cleanup_product_directories(log, false);
 
-    log.push("✓ 小米互联 / PcContinuity 卸载完成".to_string());
+    log.push("✓ 小米互联 / 互联互通（HyperConnect / PcContinuity）卸载完成".to_string());
     Ok(())
 }
 
@@ -302,7 +302,7 @@ fn cleanup_product_directories(log: &mut Vec<String>, is_manager: bool) {
         let subdirs: &[&str] = if is_manager {
             &["MiServiceTMPX", "XiaomiPCManagerTMPX", "AIServiceTMPX"]
         } else {
-            &["PcContinuityTMPX"]
+            &["PcContinuityTMPX", "HyperConnectTMPX"]
         };
 
         for sub in subdirs {
@@ -320,6 +320,19 @@ fn cleanup_product_directories(log: &mut Vec<String>, is_manager: bool) {
         // 如果 Timi Personal Computing 目录变空，也删除它
         if timi_temp.is_dir() {
             let _ = remove_dir_if_exists(&timi_temp);
+        }
+    }
+
+    // 新版 HyperConnect 的更新器缓存目录（Electron app-update）。
+    if !localappdata.is_empty() {
+        let updater_cache = Path::new(&localappdata).join("miclaw-updater");
+        match remove_dir_if_exists(&updater_cache) {
+            Ok(true) => log.push(format!("    ✓ 已删除 {}", updater_cache.display())),
+            Ok(false) => {}
+            Err(e) => log.push(format!(
+                "    ⚠ 清理 {} 失败：{e}",
+                updater_cache.display()
+            )),
         }
     }
 }
@@ -340,7 +353,7 @@ pub fn uninstall_description() -> Result<String> {
             root.display()
         )),
         (None, Some(root)) => Ok(format!(
-            "将卸载 小米互联 / PcContinuity\n\n安装目录：{}\n将删除所有相关服务与临时文件\n\n此操作不可逆！",
+            "将卸载 小米互联 / 互联互通（HyperConnect / PcContinuity）\n\n安装目录：{}\n将删除所有相关服务与临时文件\n\n此操作不可逆！",
             root.display()
         )),
         (None, None) => {

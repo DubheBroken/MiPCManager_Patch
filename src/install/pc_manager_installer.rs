@@ -23,7 +23,7 @@ impl InstallerKind {
     pub fn label(self) -> &'static str {
         match self {
             InstallerKind::XiaomiPcManager => "小米电脑管家 (XiaomiPCManager)",
-            InstallerKind::PcContinuity => "小米互联 / 互联互通 (PcContinuity)",
+            InstallerKind::PcContinuity => "小米互联 / 互联互通 (HyperConnect / PcContinuity)",
         }
     }
 
@@ -37,12 +37,15 @@ impl InstallerKind {
 
 /// 小米互联安装包文件名中的中文标识（互联互通 / PcContinuity）。
 const PC_CONTINUITY_MARKER: &str = "小米互联";
+/// 新版 HyperConnect 安装包文件名中的英文标识。
+const HYPERCONNECT_MARKER: &str = "hyperconnect";
 
 /// 根据文件名判定安装包所属产品；非安装包返回 `None`。
 ///
-/// 识别两类命名：
+/// 识别三类命名：
 /// - `*_XiaomiPCManager_*.exe`（完整版小米电脑管家）。
 /// - 含「小米互联」且以 `.exe` 结尾（小米互联最新版本_1.1.2.36_d887cad6.exe 等）。
+/// - 含 `HyperConnect` 且以 `.exe` 结尾（互联互通 2.0 安装包）。
 pub fn classify_installer_filename(name: &str) -> Option<InstallerKind> {
     if !name.to_ascii_lowercase().ends_with(".exe") {
         return None;
@@ -52,6 +55,9 @@ pub fn classify_installer_filename(name: &str) -> Option<InstallerKind> {
         return Some(InstallerKind::PcContinuity);
     }
     let lower = name.to_ascii_lowercase();
+    if lower.contains(HYPERCONNECT_MARKER) {
+        return Some(InstallerKind::PcContinuity);
+    }
     let stem = lower.strip_suffix(".exe")?;
     if stem
         .split_once("_xiaomipcmanager_")
@@ -865,6 +871,15 @@ mod tests {
         );
         assert_eq!(
             classify_installer_filename("小米互联.exe"),
+            Some(InstallerKind::PcContinuity)
+        );
+        // 新版 HyperConnect 2.0 安装包（英文命名）。
+        assert_eq!(
+            classify_installer_filename("HyperConnect_2.0.0.429_abc123.exe"),
+            Some(InstallerKind::PcContinuity)
+        );
+        assert_eq!(
+            classify_installer_filename("小米互联互通最新版本_2.0.0.429_abc123.exe"),
             Some(InstallerKind::PcContinuity)
         );
         assert_eq!(
