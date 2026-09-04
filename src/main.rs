@@ -3,9 +3,11 @@
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use mipcmanager_patch::{
-    elevate, i18n, ops,
+    elevate,
     experimental::{audio_dual_nic, smbios_spoof},
+    i18n,
     install::pc_manager_installer,
+    ops,
     patches::device as device_spoof,
 };
 use std::path::{Path, PathBuf};
@@ -208,7 +210,10 @@ fn main() {
         }
     };
     if let Err(e) = result {
-        eprintln!("{}", i18n::tr("cli.error", lang).replace("{error}", &format!("{e:#}")));
+        eprintln!(
+            "{}",
+            i18n::tr("cli.error", lang).replace("{error}", &format!("{e:#}"))
+        );
         std::process::exit(1);
     }
 }
@@ -330,9 +335,14 @@ fn print_log(lines: Vec<String>) {
 
 // ===================== 安装（交互式选择安装包） =====================
 
-fn install_pc_manager(explicit: Option<PathBuf>, url: Option<String>, lang: i18n::Lang) -> Result<()> {
+fn install_pc_manager(
+    explicit: Option<PathBuf>,
+    url: Option<String>,
+    lang: i18n::Lang,
+) -> Result<()> {
     let patcher_dir = pc_manager_installer::patcher_dir()?;
-    let Some(installer) = choose_manager_installer(explicit, url.as_deref(), &patcher_dir, lang)? else {
+    let Some(installer) = choose_manager_installer(explicit, url.as_deref(), &patcher_dir, lang)?
+    else {
         println!("{}", i18n::tr("cli.cancelled.install", lang));
         return Ok(());
     };
@@ -350,7 +360,10 @@ fn choose_manager_installer(
         return Ok(Some(path));
     }
     if let Some(url) = url {
-        println!("{}", i18n::tr("cli.downloading", lang).replace("{path}", &patcher_dir.display().to_string()));
+        println!(
+            "{}",
+            i18n::tr("cli.downloading", lang).replace("{path}", &patcher_dir.display().to_string())
+        );
         return pc_manager_installer::download_installer(url, patcher_dir).map(Some);
     }
 
@@ -358,9 +371,12 @@ fn choose_manager_installer(
     match candidates.as_slice() {
         [only] => {
             let kind = pc_manager_installer::classify_installer(only);
-            println!("{}", i18n::tr("cli.found.installer", lang)
-                .replace("{kind}", kind.label_for(lang))
-                .replace("{path}", &only.display().to_string()));
+            println!(
+                "{}",
+                i18n::tr("cli.found.installer", lang)
+                    .replace("{kind}", kind.label_for(lang))
+                    .replace("{path}", &only.display().to_string())
+            );
             Ok(Some(only.clone()))
         }
         [] => prompt_installer_source(patcher_dir, lang),
@@ -402,7 +418,12 @@ fn prompt_installer_candidate(candidates: &[PathBuf], lang: i18n::Lang) -> Resul
     println!("{}", i18n::tr("cli.multiple.installers", lang));
     for (index, path) in candidates.iter().enumerate() {
         let kind = pc_manager_installer::classify_installer(path);
-        println!("  {}) [{}] {}", index + 1, kind.label_for(lang), path.display());
+        println!(
+            "  {}) [{}] {}",
+            index + 1,
+            kind.label_for(lang),
+            path.display()
+        );
     }
     println!("  0) {}", i18n::tr("cli.cancel.option", lang));
     let choice = prompt(i18n::tr("cli.choose.installer", lang))?;
@@ -434,7 +455,11 @@ fn prompt_installer_source(patcher_dir: &Path, lang: i18n::Lang) -> Result<Optio
             if url.is_empty() {
                 return Ok(None);
             }
-            println!("{}", i18n::tr("cli.downloading", lang).replace("{path}", &patcher_dir.display().to_string()));
+            println!(
+                "{}",
+                i18n::tr("cli.downloading", lang)
+                    .replace("{path}", &patcher_dir.display().to_string())
+            );
             pc_manager_installer::download_installer(&url, patcher_dir).map(Some)
         }
         Some(InstallerSourceAction::SpecifyPath) => {
@@ -468,13 +493,8 @@ mod install_routing_tests {
     fn install_cli_accepts_exactly_one_package_source() {
         assert!(Cli::try_parse_from(["MiPCM_CLI", "install"]).is_ok());
         assert!(
-            Cli::try_parse_from([
-                "MiPCM_CLI",
-                "install",
-                "--installer",
-                "XiaomiPCManager.exe"
-            ])
-            .is_ok()
+            Cli::try_parse_from(["MiPCM_CLI", "install", "--installer", "XiaomiPCManager.exe"])
+                .is_ok()
         );
         assert!(
             Cli::try_parse_from([

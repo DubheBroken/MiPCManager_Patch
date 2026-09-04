@@ -25,9 +25,7 @@ fn main() {
 
     let app = AppWindow::new().unwrap();
 
-    app.on_tr(move |key: SharedString| -> SharedString {
-        i18n::tr(&key, lang).into()
-    });
+    app.on_tr(move |key: SharedString| -> SharedString { i18n::tr(&key, lang).into() });
 
     let presets: Vec<SharedString> = ds::PRESETS
         .iter()
@@ -99,7 +97,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.locale.apply", lang), || ops::apply_locale(None, "CN", true, false));
+            run_patch(&app, i18n::tr("gui.op.locale.apply", lang), || {
+                ops::apply_locale(None, "CN", true, false)
+            });
         }
     });
 
@@ -107,7 +107,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.locale.revert", lang), || ops::revert_locale(None, true, false));
+            run_patch(&app, i18n::tr("gui.op.locale.revert", lang), || {
+                ops::revert_locale(None, true, false)
+            });
         }
     });
 
@@ -125,7 +127,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.device.revert", lang), || ops::revert_device(None, false));
+            run_patch(&app, i18n::tr("gui.op.device.revert", lang), || {
+                ops::revert_device(None, false)
+            });
         }
     });
 
@@ -133,7 +137,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.camera.apply", lang), || ops::apply_camera(None, false));
+            run_patch(&app, i18n::tr("gui.op.camera.apply", lang), || {
+                ops::apply_camera(None, false)
+            });
         }
     });
 
@@ -141,7 +147,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.camera.revert", lang), || ops::revert_camera(None, false));
+            run_patch(&app, i18n::tr("gui.op.camera.revert", lang), || {
+                ops::revert_camera(None, false)
+            });
         }
     });
 
@@ -149,7 +157,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.audio.wifi", lang), || ops::apply_audio(ops::BroadcastMode::Wireless, None, false));
+            run_patch(&app, i18n::tr("gui.op.audio.wifi", lang), || {
+                ops::apply_audio(ops::BroadcastMode::Wireless, None, false)
+            });
         }
     });
 
@@ -157,7 +167,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.audio.lan", lang), || ops::apply_audio(ops::BroadcastMode::Wired, None, false));
+            run_patch(&app, i18n::tr("gui.op.audio.lan", lang), || {
+                ops::apply_audio(ops::BroadcastMode::Wired, None, false)
+            });
         }
     });
 
@@ -165,7 +177,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.audio.revert", lang), || ops::revert_audio(None, false));
+            run_patch(&app, i18n::tr("gui.op.audio.revert", lang), || {
+                ops::revert_audio(None, false)
+            });
         }
     });
 
@@ -181,7 +195,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
                     return;
                 }
             };
-            run_patch(&app, label, || mipcmanager_patch::experimental::audio_dual_nic::diagnose(&dir));
+            run_patch(&app, label, || {
+                mipcmanager_patch::experimental::audio_dual_nic::diagnose(&dir)
+            });
         }
     });
 
@@ -197,7 +213,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
                     return;
                 }
             };
-            run_patch(&app, label, || mipcmanager_patch::experimental::audio_dual_nic::auto_fix(&dir));
+            run_patch(&app, label, || {
+                mipcmanager_patch::experimental::audio_dual_nic::auto_fix(&dir)
+            });
         }
     });
 
@@ -215,7 +233,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.smbios.revert", lang), || ops::revert_smbios(None, false));
+            run_patch(&app, i18n::tr("gui.op.smbios.revert", lang), || {
+                ops::revert_smbios(None, false)
+            });
         }
     });
 
@@ -232,7 +252,9 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         let app_weak = app_weak.clone();
         move || {
             let app = app_weak.unwrap();
-            run_patch(&app, i18n::tr("gui.op.uninstall.msix", lang), || ops::uninstall_msix(false));
+            run_patch(&app, i18n::tr("gui.op.uninstall.msix", lang), || {
+                ops::uninstall_msix(false)
+            });
         }
     });
 
@@ -258,7 +280,11 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
             let app = app_weak.unwrap();
             app.set_show_confirm(false);
             app.set_confirm_desc("".into());
-            run_patch(&app, i18n::tr("gui.op.uninstall.product", lang), ops::uninstall_product);
+            run_patch(
+                &app,
+                i18n::tr("gui.op.uninstall.product", lang),
+                ops::uninstall_product,
+            );
         }
     });
 
@@ -280,7 +306,10 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
             }
             let app = app_weak.unwrap();
             app.set_downloading(true);
-            let log = format!("{}\n", i18n::tr("gui.downloading.start", lang).replace("{url}", &url));
+            let log = format!(
+                "{}\n",
+                i18n::tr("gui.downloading.start", lang).replace("{url}", &url)
+            );
             let current: String = app.get_log_text().into();
             app.set_log_text(format!("{}{}", current, log).into());
 
@@ -298,11 +327,16 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
                     match result {
                         Ok(path) => {
                             let path_str = path.display().to_string();
-                            let label = i18n::tr("gui.op.install", lang).replace("{path}", &path_str);
+                            let label =
+                                i18n::tr("gui.op.install", lang).replace("{path}", &path_str);
                             append_log(&app, &label, ops::install_from_path(&path));
                         }
                         Err(e) => {
-                            append_log(&app, i18n::tr("install.download.and.install", lang), Err(e));
+                            append_log(
+                                &app,
+                                i18n::tr("install.download.and.install", lang),
+                                Err(e),
+                            );
                         }
                     }
                 });

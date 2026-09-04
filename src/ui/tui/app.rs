@@ -3,11 +3,11 @@
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, List, ListItem, Paragraph},
-    Frame,
 };
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::time::Duration;
@@ -131,11 +131,15 @@ impl PatchRow {
         match (self, idx) {
             (PatchRow::Locale, 0) => {
                 let label = i18n::tr("tui.op.locale.apply", lang).to_string();
-                spawn_op(tx.clone(), label, lang, || ops::apply_locale(None, "CN", true, false));
+                spawn_op(tx.clone(), label, lang, || {
+                    ops::apply_locale(None, "CN", true, false)
+                });
             }
             (PatchRow::Locale, 1) => {
                 let label = i18n::tr("tui.op.locale.revert", lang).to_string();
-                spawn_op(tx.clone(), label, lang, || ops::revert_locale(None, true, false));
+                spawn_op(tx.clone(), label, lang, || {
+                    ops::revert_locale(None, true, false)
+                });
             }
             (PatchRow::Camera, 0) => {
                 let label = i18n::tr("tui.op.camera.apply", lang).to_string();
@@ -147,11 +151,15 @@ impl PatchRow {
             }
             (PatchRow::Audio, 0) => {
                 let label = i18n::tr("tui.op.audio.wifi", lang).to_string();
-                spawn_op(tx.clone(), label, lang, || ops::apply_audio(BroadcastMode::Wireless, None, false));
+                spawn_op(tx.clone(), label, lang, || {
+                    ops::apply_audio(BroadcastMode::Wireless, None, false)
+                });
             }
             (PatchRow::Audio, 1) => {
                 let label = i18n::tr("tui.op.audio.lan", lang).to_string();
-                spawn_op(tx.clone(), label, lang, || ops::apply_audio(BroadcastMode::Wired, None, false));
+                spawn_op(tx.clone(), label, lang, || {
+                    ops::apply_audio(BroadcastMode::Wired, None, false)
+                });
             }
             (PatchRow::Audio, 2) => {
                 let label = i18n::tr("tui.op.audio.revert", lang).to_string();
@@ -160,7 +168,9 @@ impl PatchRow {
             (PatchRow::Device, 0) => {
                 let model = app.current_device_model().to_string();
                 let label = i18n::tr("tui.op.device.apply", lang).replace("{model}", &model);
-                spawn_op(tx.clone(), label, lang, move || ops::apply_device(&model, None, false));
+                spawn_op(tx.clone(), label, lang, move || {
+                    ops::apply_device(&model, None, false)
+                });
             }
             (PatchRow::Device, 1) => {
                 let label = i18n::tr("tui.op.device.revert", lang).to_string();
@@ -169,7 +179,9 @@ impl PatchRow {
             (PatchRow::Smbios, 0) => {
                 let model = app.current_smbios_model().to_string();
                 let label = i18n::tr("tui.op.smbios.apply", lang).replace("{model}", &model);
-                spawn_op(tx.clone(), label, lang, move || ops::apply_smbios(Some(&model), None, false));
+                spawn_op(tx.clone(), label, lang, move || {
+                    ops::apply_smbios(Some(&model), None, false)
+                });
             }
             (PatchRow::Smbios, 1) => {
                 let label = i18n::tr("tui.op.smbios.revert", lang).to_string();
@@ -475,23 +487,25 @@ impl App {
             KeyCode::Enter => match UninstallRow::all()[self.uninstall_idx] {
                 UninstallRow::Msix => {
                     let label = i18n::tr("tui.op.uninstall.msix", self.lang).to_string();
-                    spawn_op(self.tx.clone(), label, self.lang, || ops::uninstall_msix(false));
+                    spawn_op(self.tx.clone(), label, self.lang, || {
+                        ops::uninstall_msix(false)
+                    });
                 }
-                    UninstallRow::Product => match ops::uninstall_product_description() {
-                        Ok(desc) => {
-                            self.confirm_mode = Some(ConfirmMode {
-                                message: desc,
-                                action_label: "uninstall_product".to_string(),
-                            });
-                        }
-                        Err(e) => {
-                            self.log.push(
-                                i18n::tr("tui.log.uninstall.fetch.error", self.lang)
-                                    .replace("{error}", &format!("{e:#}")),
-                            );
-                            self.log_scroll = self.log.len().saturating_sub(1);
-                        }
-                    },
+                UninstallRow::Product => match ops::uninstall_product_description() {
+                    Ok(desc) => {
+                        self.confirm_mode = Some(ConfirmMode {
+                            message: desc,
+                            action_label: "uninstall_product".to_string(),
+                        });
+                    }
+                    Err(e) => {
+                        self.log.push(
+                            i18n::tr("tui.log.uninstall.fetch.error", self.lang)
+                                .replace("{error}", &format!("{e:#}")),
+                        );
+                        self.log_scroll = self.log.len().saturating_sub(1);
+                    }
+                },
             },
             _ => {}
         }
@@ -606,10 +620,7 @@ impl App {
             .split(area);
 
         self.render_header(f, chunks[0]);
-        let tab_labels: Vec<&str> = Tab::all()
-            .iter()
-            .map(|t| t.label(self.lang))
-            .collect();
+        let tab_labels: Vec<&str> = Tab::all().iter().map(|t| t.label(self.lang)).collect();
         widgets::draw_tabs(f, chunks[1], &tab_labels, self.tab as usize);
 
         match self.tab {
@@ -637,8 +648,8 @@ impl App {
                 PatchRow::Smbios => i18n::tr("tui.input.smbios", self.lang),
                 _ => "",
             };
-            let title = i18n::tr("tui.overlay.input.title", self.lang)
-                .replace("{target}", target_label);
+            let title =
+                i18n::tr("tui.overlay.input.title", self.lang).replace("{target}", target_label);
             widgets::draw_input_overlay(
                 f,
                 area,
@@ -789,11 +800,7 @@ impl App {
             is_sel,
             &btns,
             if is_sel { self.patch_btn_idx } else { 0 },
-            if extra.is_empty() {
-                None
-            } else {
-                Some(&extra)
-            },
+            if extra.is_empty() { None } else { Some(&extra) },
         );
     }
 
@@ -866,14 +873,8 @@ impl App {
                     UninstallRow::Product => i18n::tr("tui.uninstall.product.desc", lang),
                 };
                 ListItem::new(vec![
-                    Line::from(Span::styled(
-                        format!("{marker} {}", row.label(lang)),
-                        style,
-                    )),
-                    Line::from(Span::styled(
-                        format!("   {desc}"),
-                        theme::item_hint(),
-                    )),
+                    Line::from(Span::styled(format!("{marker} {}", row.label(lang)), style)),
+                    Line::from(Span::styled(format!("   {desc}"), theme::item_hint())),
                     Line::from(""),
                 ])
             })

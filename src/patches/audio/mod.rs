@@ -6,8 +6,8 @@
 //! 来源 IP 与发现身份不一致，会立即 TEARDOWN。此时需在 Wi-Fi 子网上添加 metric=1
 //! 的持久路由，强制媒体会话走 Wi-Fi。
 
-use crate::{infra, install};
 use crate::infra::powershell::run_powershell;
+use crate::{infra, install};
 use anyhow::{Context, Result, anyhow, bail};
 use std::collections::BTreeMap;
 use std::fs;
@@ -277,8 +277,11 @@ if ($null -ne $wifi) { '{0}|{1}|{2}' -f $wifi.Index, $wifi.Address, $wifi.Prefix
 }
 
 fn add_route(route: &WifiSubnet) -> Result<bool> {
+    // `New-NetRoute` 会默认同时写入 ActiveStore 和 PersistentStore。
+    // 虽然 PowerShell 接受 `-PolicyStore PersistentStore` 的参数绑定，但 Windows
+    // 网络提供程序会以 ERROR_INVALID_PARAMETER (87) 拒绝该值。
     let script = format!(
-        "$existing = Get-NetRoute -PolicyStore PersistentStore -DestinationPrefix '{}' -InterfaceIndex {} -NextHop '0.0.0.0' -ErrorAction SilentlyContinue | Where-Object {{ $_.RouteMetric -eq {} }} | Select-Object -First 1; if ($null -ne $existing) {{ 'existing' }} else {{ New-NetRoute -PolicyStore PersistentStore -DestinationPrefix '{}' -InterfaceIndex {} -NextHop '0.0.0.0' -RouteMetric {} -ErrorAction Stop | Out-Null; 'created' }}",
+        "$existing = Get-NetRoute -PolicyStore PersistentStore -DestinationPrefix '{}' -InterfaceIndex {} -NextHop '0.0.0.0' -ErrorAction SilentlyContinue | Where-Object {{ $_.RouteMetric -eq {} }} | Select-Object -First 1; if ($null -ne $existing) {{ 'existing' }} else {{ New-NetRoute -DestinationPrefix '{}' -InterfaceIndex {} -NextHop '0.0.0.0' -RouteMetric {} -ErrorAction Stop | Out-Null; 'created' }}",
         route.prefix,
         route.interface_index,
         WIFI_ROUTE_METRIC,

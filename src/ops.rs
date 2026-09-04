@@ -201,7 +201,11 @@ pub fn apply_locale(
     let path = resolve_locale_dll(dll)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_LOCALE, required: true, no_kill },
+        &PatchOp {
+            procs: PROC_LOCALE,
+            required: true,
+            no_kill,
+        },
         &mut log,
         || locale::apply(&path, region, write_registry),
         |outcome| {
@@ -234,7 +238,11 @@ pub fn revert_locale(
     let path = resolve_locale_dll(dll)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_LOCALE, required: true, no_kill },
+        &PatchOp {
+            procs: PROC_LOCALE,
+            required: true,
+            no_kill,
+        },
         &mut log,
         || locale::revert(&path, remove_registry),
         |_| vec![format!("✓ 已还原地区伪装：{}", path.display())],
@@ -249,7 +257,11 @@ pub fn apply_camera(dll: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>> 
     let path = resolve_full_feature_dll(dll, camera::TARGET_DLL)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_CAMERA, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_CAMERA,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || camera::apply(&path),
         |outcome| {
@@ -271,7 +283,11 @@ pub fn revert_camera(dll: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>>
     let path = resolve_full_feature_dll(dll, camera::TARGET_DLL)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_CAMERA, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_CAMERA,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || camera::revert(&path),
         |_| vec![format!("✓ 已还原摄像头弹窗补丁：{}", path.display())],
@@ -309,7 +325,11 @@ pub fn apply_audio_with_options(
     let mut log = Vec::new();
     let patch_mode: audio::BroadcastMode = mode.into();
     run_patch(
-        &PatchOp { procs: PROC_AUDIO, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_AUDIO,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || audio::apply(&dir, patch_mode),
         |results| {
@@ -356,7 +376,11 @@ pub fn revert_audio(dir: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>> 
     let dir = resolve_full_version_dir_or(dir)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_AUDIO, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_AUDIO,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || audio::revert(&dir),
         |_| vec![],
@@ -375,7 +399,11 @@ pub fn apply_device(model: &str, dir: Option<PathBuf>, no_kill: bool) -> Result<
     let dir = resolve_full_version_dir_or(dir)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_DEVICE, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_DEVICE,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || device::apply(&dir, model),
         |_| {
@@ -394,7 +422,11 @@ pub fn revert_device(dir: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>>
     let dir = resolve_full_version_dir_or(dir)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_DEVICE, required: false, no_kill },
+        &PatchOp {
+            procs: PROC_DEVICE,
+            required: false,
+            no_kill,
+        },
         &mut log,
         || device::revert(&dir),
         |_| vec!["✓ 已还原设备伪装（移除 msimg32.dll 与注册表机型）".to_string()],
@@ -413,7 +445,11 @@ pub fn apply_smbios(
     let path = resolve_full_feature_dll(dll, smbios_spoof::TARGET_DLL)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_SMBIOS, required: true, no_kill },
+        &PatchOp {
+            procs: PROC_SMBIOS,
+            required: true,
+            no_kill,
+        },
         &mut log,
         || smbios_spoof::apply(&path, model),
         |outcome| {
@@ -435,7 +471,11 @@ pub fn revert_smbios(dll: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>>
     let path = resolve_full_feature_dll(dll, smbios_spoof::TARGET_DLL)?;
     let mut log = Vec::new();
     run_patch(
-        &PatchOp { procs: PROC_SMBIOS, required: true, no_kill },
+        &PatchOp {
+            procs: PROC_SMBIOS,
+            required: true,
+            no_kill,
+        },
         &mut log,
         || smbios_spoof::revert(&path),
         |_| vec![format!("✓ 已还原 SMBIOS 设备身份补丁：{}", path.display())],
@@ -493,9 +533,7 @@ pub fn uninstall_product() -> Result<Vec<String>> {
 
     match (manager_root, continuity_root) {
         (Some(_), Some(_)) => {
-            bail!(
-                "同时检测到小米电脑管家和小米互联，不支持同时安装。请逐一卸载。"
-            );
+            bail!("同时检测到小米电脑管家和小米互联，不支持同时安装。请逐一卸载。");
         }
         (Some(root), None) => {
             uninstall::uninstall_xiaomi_pc_manager(&root, &mut log)?;
@@ -598,11 +636,7 @@ pub fn resolve_locale_dll_from_roots(
     if errors.is_empty() {
         bail!("未找到 XiaomiPCManager 或 PcContinuity 安装目录");
     }
-    bail!(
-        "未找到可用的 {}：{}",
-        locale::TARGET_DLL,
-        errors.join("；")
-    )
+    bail!("未找到可用的 {}：{}", locale::TARGET_DLL, errors.join("；"))
 }
 
 /// 解析仅完整版电脑管家支持的 DLL。
@@ -638,7 +672,9 @@ pub fn resolve_full_version_dir_from_roots(
         return install::latest_version_dir(root);
     }
     if continuity_root.is_some() {
-        bail!("小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用");
+        bail!(
+            "小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用"
+        );
     }
     bail!("未找到 XiaomiPCManager 安装目录")
 }
@@ -666,7 +702,9 @@ pub fn ensure_full_feature_path_supported(
     let normalized_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let normalized_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     if normalized_path.starts_with(&normalized_root) {
-        bail!("小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用");
+        bail!(
+            "小米互联 / 互联互通（HyperConnect / PcContinuity）暂时仅支持地区伪装，其他功能不可用"
+        );
     }
     Ok(())
 }

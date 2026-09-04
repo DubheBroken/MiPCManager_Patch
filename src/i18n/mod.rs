@@ -1,12 +1,12 @@
-//! 系统语言检测与界面文本国际化. 
+//! 系统语言检测与界面文本国际化.
 //!
-//! 所有面向用户的界面文本 (CLI、TUI、GUI) 通过 [`detect_lang`] 检测系统语言后, 
-//! 由 [`tr`] 查找对应翻译. 中文 (含 zh-CN/zh-TW/zh-HK/zh-SG 等变体) 返回中文, 
-//! 其他语言返回英文. 
+//! 所有面向用户的界面文本 (CLI、TUI、GUI) 通过 [`detect_lang`] 检测系统语言后,
+//! 由 [`tr`] 查找对应翻译. 中文 (含 zh-CN/zh-TW/zh-HK/zh-SG 等变体) 返回中文,
+//! 其他语言返回英文.
 //!
-//! 设计原则: 
-//! - 零分配: 所有翻译均为 `&'static str`, 无运行时内存分配. 
-//! - [`ops`] 返回的日志行保持中文不变 (日志为技术信息, 面向调试而非普通用户) . 
+//! 设计原则:
+//! - 零分配: 所有翻译均为 `&'static str`, 无运行时内存分配.
+//! - [`ops`] 返回的日志行保持中文不变 (日志为技术信息, 面向调试而非普通用户) .
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Lang {
@@ -14,27 +14,23 @@ pub enum Lang {
     En,
 }
 
-/// 检测系统语言. 
+/// 检测系统语言.
 ///
 /// Windows: 调用 `GetUserDefaultUILanguage`, 中文 LCID 包括
-/// 0x0804(zh-CN)、0x0404(zh-TW)、0x0c04(zh-HK)、0x1004(zh-SG) 等. 
-/// 非 Windows: 读取 `LANG` 环境变量, `zh*` 视为中文. 
+/// 0x0804(zh-CN)、0x0404(zh-TW)、0x0c04(zh-HK)、0x1004(zh-SG) 等.
+/// 非 Windows: 读取 `LANG` 环境变量, `zh*` 视为中文.
 pub fn detect_lang() -> Lang {
     #[cfg(windows)]
     {
         use windows_sys::Win32::Globalization::GetUserDefaultUILanguage;
         let lang_id = unsafe { GetUserDefaultUILanguage() };
         // 简体/繁体中文及常见 zh 变体 LCID
-        if lang_id == 0x0804
-            || lang_id == 0x0404
-            || lang_id == 0x0c04
-            || lang_id == 0x1004
-        {
+        if lang_id == 0x0804 || lang_id == 0x0404 || lang_id == 0x0c04 || lang_id == 0x1004 {
             return Lang::Zh;
         }
-        // 兜底: 检查系统 UI 语言是否为中文. 
-        // 某些 OEM/Region 变体可能上报其他 LCID 但仍是中文系统. 
-        // 通过 GEO 或 LANGID 主语言来判断. 
+        // 兜底: 检查系统 UI 语言是否为中文.
+        // 某些 OEM/Region 变体可能上报其他 LCID 但仍是中文系统.
+        // 通过 GEO 或 LANGID 主语言来判断.
         let primary = lang_id & 0x03FF;
         if primary == 0x0004 {
             return Lang::Zh;
@@ -52,7 +48,7 @@ pub fn detect_lang() -> Lang {
     }
 }
 
-/// 根据 key 和语言返回翻译字符串. 未匹配的 key 原样返回. 
+/// 根据 key 和语言返回翻译字符串. 未匹配的 key 原样返回.
 pub fn tr(key: &str, lang: Lang) -> &str {
     match lang {
         Lang::Zh => tr_zh(key),

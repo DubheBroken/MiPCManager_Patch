@@ -1,11 +1,11 @@
 //! TUI 可复用渲染构件。
 
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Tabs},
-    Frame,
 };
 
 use super::theme;
@@ -77,7 +77,9 @@ pub fn draw_patch_row(
     let name_span = Span::styled(
         format!("{marker}{name}"),
         if is_selected {
-            Style::default().fg(theme::ACCENT).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme::ACCENT)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(theme::TEXT)
         },
@@ -189,11 +191,7 @@ pub fn draw_log_panel(f: &mut Frame, area: Rect, log: &[String], scroll: usize, 
     }
 }
 
-pub fn draw_mini_log(
-    f: &mut Frame,
-    area: Rect,
-    log: &[String],
-) {
+pub fn draw_mini_log(f: &mut Frame, area: Rect, log: &[String]) {
     let block = Block::default()
         .borders(Borders::TOP)
         .border_style(theme::border_default())
@@ -203,10 +201,7 @@ pub fn draw_mini_log(
 
     let visible = inner.height as usize;
     if log.is_empty() {
-        f.render_widget(
-            Paragraph::new("").style(theme::item_hint()),
-            inner,
-        );
+        f.render_widget(Paragraph::new("").style(theme::item_hint()), inner);
         return;
     }
 
@@ -227,7 +222,14 @@ pub fn draw_mini_log(
                 theme::mini_log_info()
             };
             Line::from(Span::styled(
-                format!(" {}", if line.len() > inner.width.saturating_sub(2) as usize { &line[..inner.width.saturating_sub(2) as usize] } else { line }),
+                format!(
+                    " {}",
+                    if line.len() > inner.width.saturating_sub(2) as usize {
+                        &line[..inner.width.saturating_sub(2) as usize]
+                    } else {
+                        line
+                    }
+                ),
                 base,
             ))
         })
@@ -251,13 +253,7 @@ pub fn draw_mini_log(
     }
 }
 
-pub fn draw_confirm_overlay(
-    f: &mut Frame,
-    parent: Rect,
-    title: &str,
-    message: &str,
-    hint: &str,
-) {
+pub fn draw_confirm_overlay(f: &mut Frame, parent: Rect, title: &str, message: &str, hint: &str) {
     let w = message.lines().map(|l| l.len()).max().unwrap_or(40).min(70) as u16 + 8;
     let h = (message.lines().count() + 4) as u16;
     let x = parent.x + (parent.width.saturating_sub(w)) / 2;
@@ -289,13 +285,7 @@ pub fn draw_confirm_overlay(
     f.render_widget(Paragraph::new(Text::from(lines)), inner);
 }
 
-pub fn draw_input_overlay(
-    f: &mut Frame,
-    parent: Rect,
-    title: &str,
-    buffer: &str,
-    hint: &str,
-) {
+pub fn draw_input_overlay(f: &mut Frame, parent: Rect, title: &str, buffer: &str, hint: &str) {
     let w = 52u16;
     let h = 6u16;
     let x = parent.x + (parent.width.saturating_sub(w)) / 2;

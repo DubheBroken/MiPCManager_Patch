@@ -264,7 +264,8 @@ pub fn launch_installer(installer: &Path) -> Result<u32> {
             temporary_existed,
         ));
     }
-    if let Err(error) = crate::patches::device::ensure_spoof_model(crate::patches::device::DEFAULT_MODEL)
+    if let Err(error) =
+        crate::patches::device::ensure_spoof_model(crate::patches::device::DEFAULT_MODEL)
     {
         let reg_error = error.context("无法写入 SpoofDevice 伪装机型");
         return Err(rollback_after_error(
@@ -376,7 +377,8 @@ fn launch_suspended_inject_and_patch(
         if kernel32.is_null() {
             bail!("GetModuleHandleW(kernel32) 失败");
         }
-        let load_library = unsafe { GetProcAddress(kernel32, c"LoadLibraryW".as_ptr().cast::<u8>()) };
+        let load_library =
+            unsafe { GetProcAddress(kernel32, c"LoadLibraryW".as_ptr().cast::<u8>()) };
         let Some(load_library) = load_library else {
             bail!("GetProcAddress(LoadLibraryW) 失败");
         };

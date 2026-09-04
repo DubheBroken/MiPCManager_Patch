@@ -158,10 +158,7 @@ pub fn uninstall_xiaomi_pc_manager(root: &Path, log: &mut Vec<String>) -> Result
     // 1. 找到版本目录并运行 uninstall.exe
     let version = crate::install::latest_version_dir(root)?;
     let uninstall_exe = version.join("uninstall.exe");
-    log.push(format!(
-        "  正在运行卸载程序：{}",
-        uninstall_exe.display()
-    ));
+    log.push(format!("  正在运行卸载程序：{}", uninstall_exe.display()));
     let removed = run_product_uninstaller(&uninstall_exe)?;
     if !removed {
         log.push(format!(
@@ -213,10 +210,7 @@ pub fn uninstall_pc_continuity(root: &Path, log: &mut Vec<String>) -> Result<()>
     // 1. 找到版本目录并运行 uninstall.exe
     let version = crate::install::latest_version_dir(root)?;
     let uninstall_exe = version.join("uninstall.exe");
-    log.push(format!(
-        "  正在运行卸载程序：{}",
-        uninstall_exe.display()
-    ));
+    log.push(format!("  正在运行卸载程序：{}", uninstall_exe.display()));
     let removed = run_product_uninstaller(&uninstall_exe)?;
     if !removed {
         log.push(format!(
@@ -262,21 +256,17 @@ fn uninstall_sub_product(log: &mut Vec<String>, root_path: &str, label: &str) {
                 log.push(format!("  正在卸载 {label}：{}", exe.display()));
                 match run_product_uninstaller(&exe) {
                     Ok(true) => log.push(format!("    ✓ {label} 卸载完成")),
-                    Ok(false) => log.push(format!(
-                        "    ⚠ {label} 卸载程序未删除自身，卸载可能未完成"
-                    )),
+                    Ok(false) => {
+                        log.push(format!("    ⚠ {label} 卸载程序未删除自身，卸载可能未完成"))
+                    }
                     Err(e) => log.push(format!("    ⚠ 卸载 {label} 失败：{e}")),
                 }
             } else {
-                log.push(format!(
-                    "    ⚠ {label} 目录存在但未找到 uninstall.exe"
-                ));
+                log.push(format!("    ⚠ {label} 目录存在但未找到 uninstall.exe"));
             }
         }
         Err(_) => {
-            log.push(format!(
-                "    ⚠ {label} 目录存在但无版本子目录"
-            ));
+            log.push(format!("    ⚠ {label} 目录存在但无版本子目录"));
         }
     }
 }
@@ -287,9 +277,7 @@ fn cleanup_product_directories(log: &mut Vec<String>, is_manager: bool) {
     match remove_dir_if_exists(Path::new(r"C:\ProgramData\MI")) {
         Ok(true) => log.push("    ✓ 已删除 C:\\ProgramData\\MI".to_string()),
         Ok(false) => {}
-        Err(e) => log.push(format!(
-            "    ⚠ 清理 C:\\ProgramData\\MI 失败：{e}"
-        )),
+        Err(e) => log.push(format!("    ⚠ 清理 C:\\ProgramData\\MI 失败：{e}")),
     }
 
     // %LOCALAPPDATA%\Temp\Timi Personal Computing\
@@ -310,10 +298,7 @@ fn cleanup_product_directories(log: &mut Vec<String>, is_manager: bool) {
             match remove_dir_if_exists(&dir) {
                 Ok(true) => log.push(format!("    ✓ 已删除 {}", dir.display())),
                 Ok(false) => {}
-                Err(e) => log.push(format!(
-                    "    ⚠ 清理 {} 失败：{e}",
-                    dir.display()
-                )),
+                Err(e) => log.push(format!("    ⚠ 清理 {} 失败：{e}", dir.display())),
             }
         }
 
@@ -329,10 +314,7 @@ fn cleanup_product_directories(log: &mut Vec<String>, is_manager: bool) {
         match remove_dir_if_exists(&updater_cache) {
             Ok(true) => log.push(format!("    ✓ 已删除 {}", updater_cache.display())),
             Ok(false) => {}
-            Err(e) => log.push(format!(
-                "    ⚠ 清理 {} 失败：{e}",
-                updater_cache.display()
-            )),
+            Err(e) => log.push(format!("    ⚠ 清理 {} 失败：{e}", updater_cache.display())),
         }
     }
 }
@@ -344,9 +326,7 @@ pub fn uninstall_description() -> Result<String> {
 
     match (manager_root, continuity_root) {
         (Some(_), Some(_)) => {
-            bail!(
-                "同时检测到小米电脑管家和小米互联。\n当前不支持同时安装，请逐一卸载。"
-            )
+            bail!("同时检测到小米电脑管家和小米互联。\n当前不支持同时安装，请逐一卸载。")
         }
         (Some(root), None) => Ok(format!(
             "将卸载 小米电脑管家\n\n安装目录：{}\n包含：主程序, AIService, MiService\n将删除所有相关服务与临时文件\n\n此操作不可逆！",

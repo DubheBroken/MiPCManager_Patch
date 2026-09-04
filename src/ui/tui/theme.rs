@@ -20,14 +20,23 @@ pub const CYAN: Color = Color::Rgb(125, 207, 255);
 
 // ── Structural styles ─────────────────────────────────────────────
 pub fn header_title() -> Style {
-    Style::default().fg(Color::White).bg(ACCENT_DIM).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(Color::White)
+        .bg(ACCENT_DIM)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn header_status_icon(ok: bool) -> Style {
     if ok {
-        Style::default().fg(GREEN).bg(ACCENT_DIM).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(GREEN)
+            .bg(ACCENT_DIM)
+            .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(YELLOW).bg(ACCENT_DIM).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(YELLOW)
+            .bg(ACCENT_DIM)
+            .add_modifier(Modifier::BOLD)
     }
 }
 

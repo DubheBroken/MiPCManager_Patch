@@ -4,7 +4,7 @@
 //! - [`locate_single_byte`]：按「前缀 + 可变值字节 + 后缀」定位唯一的候选字节下标，
 //!   覆盖原先 `locate_value_byte` 的场景并支持多候选值匹配与唯一性校验。
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 /// 在 `haystack` 中查找 `needle` 首次出现的位置。
 ///
@@ -51,7 +51,10 @@ pub fn locate_single_byte(
 ) -> Result<usize> {
     let span = prefix.len() + 1 + suffix.len();
     if haystack.len() < span {
-        bail!("缓冲区过小（{}），不足以容纳搜索模式（{span}）", haystack.len());
+        bail!(
+            "缓冲区过小（{}），不足以容纳搜索模式（{span}）",
+            haystack.len()
+        );
     }
 
     let candidates_set: std::collections::BTreeSet<u8> = candidates.iter().copied().collect();
@@ -70,8 +73,7 @@ pub fn locate_single_byte(
             found = Some(vi);
         }
     }
-    found
-        .ok_or_else(|| anyhow::anyhow!("未找到匹配的特征序列（候选值：{candidates:?}）"))
+    found.ok_or_else(|| anyhow::anyhow!("未找到匹配的特征序列（候选值：{candidates:?}）"))
 }
 
 #[cfg(test)]
@@ -116,8 +118,7 @@ mod tests {
     #[test]
     fn locate_single_byte_finds_unique() {
         let data = vec![0x01, 0x02, 0x47, 0x03, 0x04];
-        let idx =
-            locate_single_byte(&data, &[0x01, 0x02], &[0x03, 0x04], &[0x47, 0x06]).unwrap();
+        let idx = locate_single_byte(&data, &[0x01, 0x02], &[0x03, 0x04], &[0x47, 0x06]).unwrap();
         assert_eq!(idx, 2);
     }
 
