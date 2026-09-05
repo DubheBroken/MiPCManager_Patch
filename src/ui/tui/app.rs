@@ -71,6 +71,7 @@ enum PatchRow {
     Camera,
     Audio,
     Device,
+    Xiaoai,
     Smbios,
     DualNic,
 }
@@ -82,6 +83,7 @@ impl PatchRow {
             PatchRow::Camera,
             PatchRow::Audio,
             PatchRow::Device,
+            PatchRow::Xiaoai,
             PatchRow::Smbios,
             PatchRow::DualNic,
         ]
@@ -93,6 +95,7 @@ impl PatchRow {
             PatchRow::Camera => i18n::tr("patch.camera.detail", lang),
             PatchRow::Audio => i18n::tr("patch.audio.detail", lang),
             PatchRow::Device => i18n::tr("patch.device.detail", lang),
+            PatchRow::Xiaoai => i18n::tr("patch.xiaoai.detail", lang),
             PatchRow::Smbios => i18n::tr("patch.smbios.detail", lang),
             PatchRow::DualNic => i18n::tr("patch.dualnic.detail", lang),
         }
@@ -104,6 +107,7 @@ impl PatchRow {
             PatchRow::Camera => i18n::tr("patch.camera.desc", lang),
             PatchRow::Audio => i18n::tr("patch.audio.desc", lang),
             PatchRow::Device => i18n::tr("patch.device.desc", lang),
+            PatchRow::Xiaoai => i18n::tr("patch.xiaoai.desc", lang),
             PatchRow::Smbios => i18n::tr("patch.smbios.desc", lang),
             PatchRow::DualNic => i18n::tr("patch.dualnic.desc", lang),
         }
@@ -175,6 +179,14 @@ impl PatchRow {
             (PatchRow::Device, 1) => {
                 let label = i18n::tr("tui.op.device.revert", lang).to_string();
                 spawn_op(tx.clone(), label, lang, || ops::revert_device(None, false));
+            }
+            (PatchRow::Xiaoai, 0) => {
+                let label = i18n::tr("tui.op.xiaoai.apply", lang).to_string();
+                spawn_op(tx.clone(), label, lang, || ops::apply_xiaoai(None, false));
+            }
+            (PatchRow::Xiaoai, 1) => {
+                let label = i18n::tr("tui.op.xiaoai.revert", lang).to_string();
+                spawn_op(tx.clone(), label, lang, || ops::revert_xiaoai(None, false));
             }
             (PatchRow::Smbios, 0) => {
                 let model = app.current_smbios_model().to_string();
@@ -356,7 +368,7 @@ impl App {
             Tab::Patches => self.handle_patches_key(code),
             Tab::Uninstall => self.handle_uninstall_key(code),
             Tab::Log => self.handle_log_key(code),
-            Tab::Install => {}
+            Tab::Install => self.handle_install_key(code),
         }
         true
     }
@@ -508,6 +520,13 @@ impl App {
                 },
             },
             _ => {}
+        }
+    }
+
+    fn handle_install_key(&mut self, code: KeyCode) {
+        if code == KeyCode::Enter {
+            let label = i18n::tr("tui.op.xiaoai.install", self.lang).to_string();
+            spawn_op(self.tx.clone(), label, self.lang, ops::install_local_xiaoai);
         }
     }
 
@@ -812,12 +831,8 @@ impl App {
         let lang = self.lang;
         let lines = vec![
             Line::from(Span::styled(
-                i18n::tr("tui.install.hint.cmd1", lang),
-                theme::item_normal(),
-            )),
-            Line::from(Span::styled(
-                i18n::tr("tui.install.hint.cmd2", lang),
-                theme::item_normal(),
+                i18n::tr("tui.install.xiaoai.enter", lang),
+                theme::item_selected(),
             )),
             Line::from(""),
             Line::from(Span::styled(
@@ -835,6 +850,27 @@ impl App {
                 Style::default()
                     .fg(theme::CYAN)
                     .add_modifier(Modifier::ITALIC),
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                i18n::tr("install.xiaoai.title", lang),
+                theme::item_hint(),
+            )),
+            Line::from(Span::styled(
+                i18n::tr("tui.install.hint.xiaoai1", lang),
+                Style::default()
+                    .fg(theme::PURPLE)
+                    .add_modifier(Modifier::ITALIC),
+            )),
+            Line::from(Span::styled(
+                i18n::tr("tui.install.hint.xiaoai2", lang),
+                Style::default()
+                    .fg(theme::PURPLE)
+                    .add_modifier(Modifier::ITALIC),
+            )),
+            Line::from(Span::styled(
+                i18n::tr("install.xiaoai.note", lang),
+                theme::item_hint(),
             )),
             Line::from(""),
             Line::from(Span::styled(

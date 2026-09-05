@@ -24,13 +24,17 @@ export component AppWindow inherits Window {
     in-out property <string> status-text;
     in-out property <string> log-text;
     in-out property <bool> full-features: false;
+    in-out property <bool> xiaoai-available: false;
     in-out property <string> last-error;
     in-out property <length> log-viewport-y: 0px;
     in-out property <bool> downloading: false;
+    in-out property <bool> xiaoai-busy: false;
     in-out property <bool> show-confirm: false;
     in-out property <string> confirm-desc;
     in-out property <string> url-input;
     in-out property <string> path-input;
+    in-out property <string> xiaoai-url-input;
+    in-out property <string> xiaoai-path-input;
     in-out property <string> custom-model-input: "TM2425";
     in-out property <[string]> model-presets;
     in-out property <[string]> model-codes;
@@ -53,9 +57,14 @@ export component AppWindow inherits Window {
     callback fix-dual-nic();
     callback apply-smbios(string);
     callback revert-smbios();
+    callback apply-xiaoai();
+    callback revert-xiaoai();
     callback download-and-install(string);
     callback browse-installer();
     callback start-install(string);
+    callback download-and-install-xiaoai(string);
+    callback browse-xiaoai-installer();
+    callback start-xiaoai-install(string);
     callback uninstall-msix();
     callback request-uninstall();
     callback confirm-uninstall();
@@ -328,6 +337,36 @@ export component AppWindow inherits Window {
                             HorizontalLayout {
                                 spacing: 10px;
                                 Text {
+                                    text: root.tr("patch.xiaoai");
+                                    vertical-alignment: center;
+                                    min-width: 90px;
+                                    font-size: 16px;
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    Button {
+                                        height: 30px;
+                                        width: 80px;
+                                        primary: true;
+                                        text: root.tr("btn.apply");
+                                        enabled: root.xiaoai-available && !root.xiaoai-busy;
+                                        clicked => { root.apply-xiaoai(); }
+                                    }
+
+                                    Button {
+                                        height: 30px;
+                                        width: 80px;
+                                        text: root.tr("btn.revert");
+                                        enabled: root.xiaoai-available && !root.xiaoai-busy;
+                                        clicked => { root.revert-xiaoai(); }
+                                    }
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 10px;
+                                Text {
                                     text: root.tr("patch.dual-nic");
                                     vertical-alignment: center;
                                     min-width: 90px;
@@ -446,6 +485,68 @@ export component AppWindow inherits Window {
                                     text: root.tr("btn.start-install");
                                     enabled: root.path-input != "";
                                     clicked => { root.start-install(root.path-input); }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        border-radius: 10px;
+                        border-width: 1px;
+                        VerticalLayout {
+                            padding: 16px;
+                            spacing: 8px;
+                            Text {
+                                text: root.tr("install.xiaoai.title");
+                                font-weight: 700;
+                                font-size: 16px;
+                            }
+                            Text {
+                                text: root.tr("install.xiaoai.note");
+                            }
+
+                            HorizontalLayout {
+                                spacing: 6px;
+                                LineEdit {
+                                    text <=> root.xiaoai-url-input;
+                                    placeholder-text: root.tr("install.download.placeholder");
+                                }
+
+                                if root.xiaoai-busy: Spinner {
+                                    indeterminate: true;
+                                }
+                                Button {
+                                    height: 30px;
+                                    width: 166px;
+                                    primary: true;
+                                    text: root.tr("install.download.and.install");
+                                    enabled: !root.xiaoai-busy && root.xiaoai-url-input != "";
+                                    clicked => { root.download-and-install-xiaoai(root.xiaoai-url-input); }
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 6px;
+                                LineEdit {
+                                    text <=> root.xiaoai-path-input;
+                                    placeholder-text: root.tr("install.file.placeholder");
+                                }
+
+                                Button {
+                                    height: 30px;
+                                    width: 80px;
+                                    text: root.tr("btn.select");
+                                    enabled: !root.xiaoai-busy;
+                                    clicked => { root.browse-xiaoai-installer(); }
+                                }
+
+                                Button {
+                                    height: 30px;
+                                    width: 80px;
+                                    primary: true;
+                                    text: root.tr("btn.start-install");
+                                    enabled: !root.xiaoai-busy && root.xiaoai-path-input != "";
+                                    clicked => { root.start-xiaoai-install(root.xiaoai-path-input); }
                                 }
                             }
                         }

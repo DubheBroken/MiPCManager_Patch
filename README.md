@@ -2,7 +2,7 @@
 
 # MiPCM Patch
 
-为「小米电脑管家 / 小米互联」提供功能增强与还原能力的补丁工具。支持图形界面与命令行两种使用方式。
+为「小米电脑管家 / 小米互联 / 超级小爱」提供功能增强、安装辅助与还原能力的补丁工具。支持图形界面与命令行两种使用方式。
 
 ![GUI 预览](assets/MiPCM_GUI.png)
 
@@ -15,6 +15,7 @@
 | 🔊 **音频流转增强** | 在无线 WiFi 与有线 LAN 之间切换音频流转的网络介质 |
 | 💻 **设备伪装** | 伪装为指定机型，解锁机型相关功能 |
 | 📦 **安装小米电脑管家** | 自动查找或下载安装包，释放必要的补丁文件后启动安装 |
+| 📦 **安装超级小爱** | 辅助运行安装包，安装完成后向实际版本目录部署专用 `userenv.dll`（不限制版本） |
 | 📊 **状态查看** | 检查当前安装位置、各补丁状态 |
 
 每个功能均提供一键还原，所有补丁操作幂等、可重复执行。
@@ -36,7 +37,7 @@
 2. 按需点击各功能的「应用」按钮
 3. 出问题时点击对应「还原」即可恢复
 
-支持将 `.exe` 安装包拖入窗口进行安装。
+支持选择本地 `.exe` 安装包或输入下载地址进行安装。
 
 ### 命令行
 
@@ -64,6 +65,15 @@ MiPCM_CLI.exe device revert
 # 安装小米电脑管家
 MiPCM_CLI.exe install
 MiPCM_CLI.exe install --installer "D:\path\to\installer.exe"
+
+# 安装超级小爱并注入补丁
+MiPCM_CLI.exe xiaoai install
+MiPCM_CLI.exe xiaoai install --installer "D:\path\to\XiaoaiAgent_Setup.exe"
+MiPCM_CLI.exe xiaoai install --url "https://example.com/XiaoaiAgent_Setup.exe"
+
+# 维护已安装的超级小爱补丁
+MiPCM_CLI.exe xiaoai apply
+MiPCM_CLI.exe xiaoai revert
 ```
 
 无参数运行会进入交互菜单。
@@ -79,7 +89,7 @@ MiPCM_CLI.exe install --installer "D:\path\to\installer.exe"
 <details>
 <summary>补丁后需要重启电脑吗？</summary>
 
-不需要。补丁前工具会自动关闭相关进程，补丁后手动重新打开小米电脑管家即可。
+小米电脑管家相关补丁通常不需要重启，补丁后手动重新打开小米电脑管家即可。安装、应用或还原超级小爱补丁后，请按程序提示重启电脑；程序不会自动重启。
 </details>
 
 <details>
@@ -103,6 +113,13 @@ MiPCM_CLI.exe install --installer "D:\path\to\installer.exe"
 ## 技术说明
 
 补丁原理、定位方式、实现细节与构建说明详见 [TechnicalIntroduce.md](TechnicalIntroduce.md)。
+
+## 致谢
+
+- Coolapk @Na1veMagic：地区伪装实现思路
+- @WWW4R4E : 的 [WWW4R4E/Mi-transfer-station](https://github.com/WWW4R4E/Mi-transfer-station) 的 CecilDll 为摄像头 Patch 做了基础
+- @ChsBuffer ：设备伪装所用 `msimg32.dll`
+- @FarMounTAI : 超级小爱专用 `userenv.dll`
 
 ## 免责声明
 

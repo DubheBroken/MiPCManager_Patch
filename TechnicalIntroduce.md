@@ -1,6 +1,6 @@
 # Technical Introduce
 
-本文档记录 MiPCManager Patcher 的补丁原理、定位方式、实现细节与构建说明。面向普通用户的功能说明见 [README.md](README.md)。
+本文档记录 MiPCManager Patcher 对小米电脑管家、小米互联 / 互联互通和超级小爱执行的操作，以及补丁原理、定位方式、实现细节与构建说明。面向普通用户的功能说明见 [README.md](README.md)。
 
 ## 项目概览
 
@@ -8,18 +8,19 @@
 
 | 产物 | 入口 | 说明 |
 |---|---|---|
-| `MiPCM_GUI_v*.*.*.exe` | `src/ui/gui/main.rs` | egui 图形界面，支持拖放安装 |
-| `MiPCM_CLI_v*.*.*.exe` | `src/main.rs` | clap 命令行 + 交互菜单 |
+| `MiPCM_GUI_v*.*.*.exe` | `src/ui/gui/app.rs` | Slint 图形界面，支持选择本地安装包或输入下载地址 |
+| `MiPCM_CLI_v*.*.*.exe` | `src/main.rs` | clap 命令行；无参数启动 ratatui 交互界面 |
 
 核心库 (`src/lib.rs`) 将各模块聚合为 `ops` 层的高层操作，确保两个前端调用完全相同的逻辑。
 
 ## 总体设计
 
-工具自动探测 `XiaomiPCManager` 与小米互联 / 互联互通（`PcContinuity` / `HyperConnect`）的最新安装版本：
+工具自动探测 `XiaomiPCManager`、小米互联 / 互联互通（`PcContinuity` / `HyperConnect`）与超级小爱（`XiaoaiAgent`）的最新安装版本：
 
 - **XiaomiPCManager**（完整版）：位于 `C:\Program Files\MI\XiaomiPCManager`，支持所有补丁功能。工具启动时自动关闭其相关进程。
 - **PcContinuity**（小米互联）：位于 `C:\Program Files\MI\PcContinuity`，目前**仅支持地区伪装**。
 - **HyperConnect**（小米互联互通 2.0）：位于 `C:\Program Files\MI\HyperConnect`，原生互联 DLL 在版本目录下的 `resources\native-interconnect\win32` 子目录（`micont_rtm.dll`、`micont_service.exe` 等），同样**仅支持地区伪装**。
+- **XiaoaiAgent**（超级小爱）：位于 `C:\Program Files\MI\XiaoaiAgent`，工具从其子目录中选择版本号最高的目录，不对具体版本设置适配限制。
 
 小米互联 / 互联互通两个产品均不做启动时全量进程关闭（仅按功能关闭对应进程）。
 
@@ -31,8 +32,9 @@
 | 摄像头弹窗 | `XiaomiPcManager.exe` |
 | 音频流转 | `MiPCAudio.exe`、`MiPlayCastService.exe`、`MAFSvr.exe` |
 | 设备伪装 | `XiaomiPcManager.exe` |
+| 超级小爱 | `XiaoaiAgent.exe` |
 
-补丁前自动备份原文件（`.orig` 后缀），所有补丁幂等且可还原。若 Patch/还原时遇到 access denied 错误（`os error 5`），会自动关闭对应进程并重试一次。
+补丁前自动备份原文件（文件名后追加 `.orig.bak`），所有补丁幂等且可还原。若 Patch/还原时遇到 access denied 错误（`os error 5`），会自动关闭对应进程并重试一次。
 
 修改 `Program Files` 下文件需管理员权限，release exe 内嵌 `requireAdministrator` manifest，双击启动即弹 UAC，运行时仍保留提权兜底。可通过环境变量 `MIPCM_NO_ELEVATE=1` 跳过运行时提权兜底（但 Release manifest 强制提权不会被跳过）。
 
@@ -57,7 +59,7 @@
 - `--no-registry`：不写入地区注册表值
 - `--no-kill`：不自动关闭相关进程
 
-代码：[`src/patches/locale_spoof.rs`](src/patches/locale_spoof.rs)
+代码：[`src/patches/locale/mod.rs`](src/patches/locale/mod.rs)
 
 > 实现思路：感谢 Coolapk@Na1veMagic
 
@@ -80,13 +82,13 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 
 注入需要的字符串/常量（枚举值 3 是 IL 立即数）无需向元数据堆新增任何条目，所以避开了「纯 Rust 元数据写库无法回写大型 WinRT 程序集」的难题。由于注入使方法体增长、无法原地扩展，工具的做法是：
 
-1. 纯 Rust 解析 ECMA-335 元数据，按「类型名 + 方法名后缀」定位 `MethodDef`，取得方法体 RVA 与 RVA 字段的文件偏移（[`src/infra/dotnet/metadata.rs`](src/infra/dotnet/metadata.rs)）。
-2. 解析方法体（fat/tiny 头、EH 段），在 IL 前拼接 5 字节守卫 `ldarg.1; ldc.i4.3; bne.un.s +1; ret`，必要时整体修正 EH 偏移（[`src/infra/dotnet/method_body.rs`](src/infra/dotnet/method_body.rs)）。
-3. 追加一个新节 `.mipatch` 写入新方法体，丢弃失效的 Authenticode 证书、维护 `SizeOfImage`、重算 PE 校验和，并把 `MethodDef.RVA` 改指到新节（[`src/infra/dotnet/pe.rs`](src/infra/dotnet/pe.rs)）。
+1. 纯 Rust 解析 ECMA-335 元数据，按「类型名 + 方法名后缀」定位 `MethodDef`，取得方法体 RVA 与 RVA 字段的文件偏移（[`src/patches/camera/dotnet/metadata.rs`](src/patches/camera/dotnet/metadata.rs)）。
+2. 解析方法体（fat/tiny 头、EH 段），在 IL 前拼接 5 字节守卫 `ldarg.1; ldc.i4.3; bne.un.s +1; ret`，必要时整体修正 EH 偏移（[`src/patches/camera/dotnet/method_body.rs`](src/patches/camera/dotnet/method_body.rs)）。
+3. 追加一个新节 `.mipatch` 写入新方法体，丢弃失效的 Authenticode 证书、维护 `SizeOfImage`、重算 PE 校验和，并把 `MethodDef.RVA` 改指到新节（[`src/infra/pe.rs`](src/infra/pe.rs)）。
 
 **验证**：补丁后程序集可被 ILSpy 正常反编译，`ExceptionCallback` 反编译结果即为上述守卫；PE 结构、元数据、方法体头部（codesize/maxstack/局部签名）均合法；重复执行幂等。
 
-代码：[`src/patches/camera_toast.rs`](src/patches/camera_toast.rs)、[`src/infra/dotnet/`](src/infra/dotnet/)
+代码：[`src/patches/camera/mod.rs`](src/patches/camera/mod.rs)、[`src/patches/camera/dotnet/`](src/patches/camera/dotnet/)、[`src/infra/pe.rs`](src/infra/pe.rs)
 
 ## 补丁三：MiPCAudio 音频流转「无线 / 有线」模式
 
@@ -122,7 +124,7 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 - `--no-wifi-local-route`：有线广播时不添加 Wi-Fi 本地子网优先路由
 - `--no-kill`：不自动关闭相关进程
 
-代码：[`src/patches/mipcaudio_lan.rs`](src/patches/mipcaudio_lan.rs)
+代码：[`src/patches/audio/mod.rs`](src/patches/audio/mod.rs)
 
 ## 补丁四：设备伪装（DeviceSpoof）
 
@@ -130,19 +132,20 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 
 **原理**：利用 DLL 搜索顺序，同目录的 `msimg32.dll` 优先于系统目录被加载。该代理 DLL 读取 `HKCU\Software\SmartSharePatch\SpoofDevice` 的机型代号并据此伪装本机型号。
 
-**实现**：`msimg32.dll` 已通过 `include_bytes!` 内嵌进编译产物（`src/infra/dlls/msimg32.dll`），应用时直接释放到版本目录，无需附带文件；同时写入注册表机型代号。还原时删除该 DLL 并移除注册表项（若原目录本就存在同名文件，则在应用时备份、还原时恢复）。
+**实现**：`msimg32.dll` 已通过 `include_bytes!` 内嵌进编译产物（`src/patches/device/dlls/msimg32.dll`），应用时直接释放到版本目录，无需附带文件；同时写入注册表机型代号。还原时删除该 DLL 并移除注册表项（若原目录本就存在同名文件，则在应用时备份、还原时恢复）。
 
 **预置机型**（亦可 `--model` 自定义任意代号）：
 
 | 代号 | 机型 |
 |---|---|
-| `TM2425`（默认） | Redmi Book Pro 16 (2026) |
+| `TM2425`（默认） | Redmi Book Pro 14 (2026) |
+| `TM2424` | Xiaomi Book Pro 14 (2026) |
 | `TM2309` | Redmi Book 16 (2024) |
 
 **命令行选项**：
 - `--model`：指定伪装机型，默认 `TM2425`
 
-代码：[`src/patches/device_spoof.rs`](src/patches/device_spoof.rs)
+代码：[`src/patches/device/mod.rs`](src/patches/device/mod.rs)
 
 > DLL 来源：@ChsBuffer
 
@@ -150,7 +153,7 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 
 安装入口仅在未检测到 `PcContinuity` 时可用（官方不允许两者同时安装）。工具优先扫描 Patcher 可执行文件同目录的 `*_XiaomiPCManager_*.exe`；找到一个时直接使用，找到多个时请用户选择。如未找到，则提示输入 HTTP(S) 网址或本地 `.exe` 路径。
 
-启动安装包前，复用 DeviceSpoof 的内嵌代理释放逻辑，将 `msimg32.dll` 写入安装包同目录。若目标已存在且内容不同，会先创建 `.orig.bak` 备份。
+启动安装包前，工具会在安装包同目录临时准备 `msimg32.dll`，写入默认伪装机型，然后挂起启动安装器、注入代理并旁路系统版本与机型检查。安装器启动成功后，安装包目录中的临时文件会恢复为操作前的状态。
 
 **URL 下载**：调用 Windows PowerShell `Invoke-WebRequest`，URL 通过子进程环境变量传入（不拼接到 PowerShell 脚本中）。下载先写入 `.download.tmp` 临时文件，成功后再重命名，避免保留不完整安装包。
 
@@ -158,42 +161,92 @@ if (exception_id == CameraExceptionId.kLOCAL_CAMERA_DISABLED)
 - `--installer <exe>`：显式指定安装包路径
 - `--url <url>`：通过 HTTP(S) 下载安装包
 
+## 安装超级小爱并注入补丁
+
+超级小爱安装流程复用通用的安装包查找、下载、目录探测、原子写入和备份能力，但使用独立的 `userenv.dll`，不会复用小米电脑管家的 `msimg32.dll`。
+
+超级小爱安装器仅接受以下两个文件名（不区分大小写）；本地自动查找也只匹配这两个名称：
+
+- `XiaoaiAgent_Setup.exe`
+- `s6bK_XiaoaiAgent_3.5.0.220_31444585.exe`
+
+文件名不用于推断最终安装版本。工具对超级小爱不设置具体版本限制；安装完成后才扫描 `C:\Program Files\MI\XiaoaiAgent\<版本目录>`，选择版本号最高的目录作为部署目标。
+
+安装流程如下：
+
+1. 保存安装包目录中原有 `userenv.dll` 的状态，并临时释放本工具内嵌的超级小爱专用 DLL。
+2. 启动安装器，跟踪安装器进程及其派生的安装进程，等待用户完成安装并关闭安装窗口；安装后自动启动、且位于 XiaoaiAgent 安装目录内的程序不计入安装器进程树等待。
+3. 无论安装成功或失败，都尝试将安装包目录恢复为操作前状态。
+4. 安装成功后探测实际版本目录，关闭正在运行的 `XiaoaiAgent`，再把专用 `userenv.dll` 部署到该目录。
+5. 输出重启提示；工具不会自行重启电脑。
+
+应用补丁时，若目标目录原本存在不同的 `userenv.dll`，会先保存为 `userenv.dll.orig.bak`；若原本不存在，则创建空的同名备份标记。还原时据此恢复原文件或删除本工具部署的 DLL，并且在文件内容不属于本工具时拒绝删除。重复应用会识别已部署状态并跳过写入。
+
+**命令行入口**：
+
+- `xiaoai install`：安装 Patcher 同目录中唯一一个已识别的超级小爱安装包
+- `xiaoai install --installer <exe>`：显式指定安装包
+- `xiaoai install --url <url>`：通过用户提供的 HTTP(S) 地址下载安装包
+- `xiaoai apply [--dir <版本目录>]`：向已安装目录部署补丁
+- `xiaoai revert [--dir <版本目录>]`：还原补丁
+
+代码：[`src/install/xiaoai_installer.rs`](src/install/xiaoai_installer.rs)、[`src/patches/ai/mod.rs`](src/patches/ai/mod.rs)、[`src/ops.rs`](src/ops.rs)
+
+## 本程序所做的操作
+
+所有探测、补丁、安装和还原操作均在本机执行。程序不会上传设备信息、补丁状态或文件内容；只有用户明确提供 HTTP(S) 安装包地址时，才会调用系统 Windows PowerShell 下载该文件。
+
+| 类型 | 程序行为 | 还原方式 |
+|---|---|---|
+| 安装目录与状态探测 | 枚举 `C:\Program Files\MI` 下受支持产品的版本目录，读取目标文件以判断补丁状态 | 只读，无需还原 |
+| 进程管理 | 应用或还原补丁前，按功能结束可能占用目标文件的相关进程 | 用户可重新启动对应程序；超级小爱按提示重启电脑 |
+| 地区伪装 | 修改 `micont_rtm.dll` 中读取的值名，并写入 `HKCU\Control Panel\International\Geo\XCN` | 从 `.orig.bak` 恢复 DLL，并删除 `XCN` 值 |
+| 摄像头弹窗 | 为 `PcControlCenter.dll` 追加 `.mipatch` 节并改写目标方法 RVA | 从 `.orig.bak` 恢复原 DLL |
+| 音频流转 | 等长修改 `MiPCAudio.exe` 与 `idmruntime.dll` 的三处网卡类型判断 | 从 `.orig.bak` 恢复原文件 |
+| 有线音频路由 | 在有线模式下按需创建 metric=1 的持久 Wi-Fi 本地子网路由，并在版本目录记录 `.mipcm_audio_wifi_route` | 只删除本工具有状态记录的路由和状态文件 |
+| 设备伪装 | 向小米电脑管家版本目录部署 `msimg32.dll`，并写入 `HKCU\Software\SmartSharePatch\SpoofDevice` | 恢复或删除代理 DLL，并删除注册表值 |
+| 超级小爱 | 安装时临时部署、随后恢复安装包目录中的 `userenv.dll`；安装后向实际版本目录部署该 DLL | 根据 `.orig.bak` 恢复原文件，或删除本工具部署的 DLL |
+| 安装包下载 | 把用户指定 URL 下载到 Patcher 目录的 `.download.tmp`，成功后再重命名为 `.exe`；不会覆盖已有目标 | 用户可自行删除已下载安装包 |
+| 产品卸载 | 经用户确认后运行产品自带卸载程序；相关入口还可删除已知服务、残留目录或 MiDrop Ext MSIX，并在需要时重启资源管理器 | 属于不可逆操作，执行前由界面要求确认 |
+
+除产品卸载外，补丁操作均以幂等和可还原为目标。对目标文件的持久写入使用同目录临时文件替换；若已有备份，程序保留首次备份，不覆盖原始副本。
+
 ## GUI 实现
 
-GUI 使用 egui + eframe 的 glow 后端构建，轻量且体积可控。主要布局：
+GUI 使用 Slint 声明式界面构建。主要布局：
 
 - **安装状态区**：显示当前安装位置和各补丁状态
 - **补丁操作区**：应用 / 还原按钮，含机型选择下拉框和自定义输入
-- **安装拖放区**：支持拖入 `.exe` 安装包
+- **安装区**：支持选择本地 `.exe` 安装包或输入下载地址，超级小爱安装任务在后台等待安装器完成
 - **日志区**：实时显示操作日志
 
-窗口尺寸 760×1050，最小 640×820，居中显示。通过 `ico` crate 解析 `assets/MiPCManager.ico` 作为窗口图标。
+界面声明位于 `src/ui/app.slint`，Rust 侧事件与异步任务编排位于 `src/ui/gui/app.rs`。
 
 ## 代码结构
 
 ```
 src/
-├── lib.rs              # 核心库入口，聚合各模块
-├── ops.rs              # 高层操作（apply/revert/status）
-├── elevate.rs          # 管理员提权兜底
-├── infra/
-│   ├── dotnet/         # ECMA-335 元数据解析、方法体注入、PE 重写
-│   └── dlls/           # 内嵌 DLL 资源
+├── lib.rs                       # 核心库入口，聚合各模块
+├── ops.rs                       # 高层操作（apply/revert/status/install）
+├── elevate.rs                   # 管理员提权兜底
+├── infra/                       # PE、字节、注册表、PowerShell 基础设施
 ├── patches/
-│   ├── locale_spoof.rs      # 地区伪装
-│   ├── camera_toast.rs      # 摄像头弹窗抑制
-│   ├── mipcaudio_lan.rs     # 音频流转
-│   └── device_spoof.rs      # 设备伪装
+│   ├── locale/mod.rs            # 地区伪装
+│   ├── camera/                  # 摄像头弹窗抑制与 .NET 方法体处理
+│   ├── audio/mod.rs             # 音频流转与 Wi-Fi 本地路由
+│   ├── device/                  # 设备伪装及内嵌 msimg32.dll
+│   └── ai/                      # 超级小爱及内嵌 userenv.dll
 ├── install/
-│   └── mod.rs          # 安装逻辑
-├── experimental/
-│   └── mod.rs          # 实验性功能（双网卡修复、SMBIOS 伪装）
+│   ├── mod.rs                   # 通用安装目录、进程和文件操作
+│   ├── pc_manager_installer.rs  # 小米电脑管家安装
+│   └── xiaoai_installer.rs      # 超级小爱安装
+├── uninstall/mod.rs             # MSIX 与产品卸载
+├── experimental/               # 实验性 SMBIOS 等功能
 ├── ui/
-│   ├── gui/main.rs     # egui 图形界面
-│   ├── tui.rs          # ratatui 终端 UI
-│   └── mod.rs
-├── main.rs             # CLI 入口
-└── bin/                # 命令行解析
+│   ├── app.slint                # GUI 界面声明
+│   ├── gui/app.rs               # GUI 二进制入口与事件编排
+│   └── tui/                     # ratatui 终端 UI
+└── main.rs                      # CLI / TUI 统一入口
 ```
 
 ## 构建
@@ -209,7 +262,7 @@ release 产物路径：
 
 release 产物会嵌入 `resources/mipcm_patch.exe.manifest` 与 `resources/mipcm_gui.exe.manifest`，其中声明 `requestedExecutionLevel=requireAdministrator`。因此从资源管理器双击 exe 时，Windows 会在程序启动前弹出 UAC。
 
-构建时 `src/patches/device_spoof.rs` 通过 `include_bytes!` 内嵌 `src/infra/dlls/msimg32.dll`，该文件需存在。
+构建时 `src/patches/device/mod.rs` 与 `src/patches/ai/mod.rs` 分别通过 `include_bytes!` 内嵌 `src/patches/device/dlls/msimg32.dll` 和 `src/patches/ai/dlls/userenv.dll`，两个文件均需存在。
 
 可通过 `MIPCM_SKIP_GUI_MANIFEST=1` 跳过 GUI manifest 嵌入（使用 `mipcm_gui_test.rc`，不强制管理员，便于本机无 UAC 冒烟测试）。
 
@@ -221,3 +274,9 @@ release 产物会嵌入 `resources/mipcm_patch.exe.manifest` 与 `resources/mipc
 | `lto` | `true` | 链接时优化 |
 | `strip` | `true` | 剥离调试符号 |
 | `panic` | `abort` | 减少 unwind 代码 |
+
+## 致谢
+
+- Coolapk @Na1veMagic：地区伪装实现思路
+- @ChsBuffer：设备伪装所用 `msimg32.dll`
+- 感谢提供超级小爱专用 `userenv.dll`、整理安装补丁教程并完成实机验证的社区用户

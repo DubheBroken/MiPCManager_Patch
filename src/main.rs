@@ -63,6 +63,11 @@ enum Command {
         #[arg(long, value_name = "URL", conflicts_with = "installer")]
         url: Option<String>,
     },
+    /// 安装或维护超级小爱（userenv.dll）
+    Xiaoai {
+        #[command(subcommand)]
+        action: XiaoaiAction,
+    },
     /// 卸载 MiDrop Ext MSIX 包 或 小米电脑管家 / 小米互联
     Uninstall {
         #[command(subcommand)]
@@ -163,6 +168,33 @@ enum SmbiosAction {
     Revert {
         #[arg(long)]
         dll: Option<PathBuf>,
+        #[arg(long)]
+        no_kill: bool,
+    },
+}
+
+#[derive(Subcommand, Clone)]
+enum XiaoaiAction {
+    /// 安装超级小爱，等待安装器结束后自动注入运行补丁
+    Install {
+        /// 显式指定 .exe 安装包
+        #[arg(long, value_name = "EXE", conflicts_with = "url")]
+        installer: Option<PathBuf>,
+        /// 从 HTTP(S) 地址下载安装包
+        #[arg(long, value_name = "URL", conflicts_with = "installer")]
+        url: Option<String>,
+    },
+    /// 向已安装的最新版本目录应用补丁
+    Apply {
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        #[arg(long)]
+        no_kill: bool,
+    },
+    /// 还原已安装目录中的补丁
+    Revert {
+        #[arg(long)]
+        dir: Option<PathBuf>,
         #[arg(long)]
         no_kill: bool,
     },
@@ -306,6 +338,17 @@ fn run(cmd: Command, lang: i18n::Lang) -> Result<()> {
             }
         },
         Command::Install { installer, url } => install_pc_manager(installer, url, lang),
+        Command::Xiaoai { action } => match action {
+            XiaoaiAction::Install { installer, url } => install_xiaoai(installer, url, lang),
+            XiaoaiAction::Apply { dir, no_kill } => {
+                print_log(ops::apply_xiaoai(dir, no_kill)?);
+                Ok(())
+            }
+            XiaoaiAction::Revert { dir, no_kill } => {
+                print_log(ops::revert_xiaoai(dir, no_kill)?);
+                Ok(())
+            }
+        },
         Command::Uninstall { action } => match action {
             UninstallAction::Msix => {
                 print_log(ops::uninstall_msix(false)?);
@@ -347,6 +390,17 @@ fn install_pc_manager(
         return Ok(());
     };
     print_log(ops::install_from_path(&installer)?);
+    Ok(())
+}
+
+fn install_xiaoai(explicit: Option<PathBuf>, url: Option<String>, _lang: i18n::Lang) -> Result<()> {
+    let log = match (explicit, url) {
+        (Some(installer), None) => ops::install_xiaoai_from_path(&installer)?,
+        (None, Some(url)) => ops::download_and_install_xiaoai(&url)?,
+        (None, None) => ops::install_local_xiaoai()?,
+        (Some(_), Some(_)) => unreachable!("clap rejects conflicting installer sources"),
+    };
+    print_log(log);
     Ok(())
 }
 

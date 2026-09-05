@@ -51,6 +51,7 @@ fn main() {
 fn refresh(app: &AppWindow) {
     let full = ops::full_features_available();
     app.set_full_features(full);
+    app.set_xiaoai_available(ops::xiaoai_available());
     let status = ops::status_lines().join("\n");
     app.set_status_text(status.into());
 }
@@ -79,6 +80,23 @@ fn append_log(app: &AppWindow, label: &str, result: Result<Vec<String>>) {
 
 fn run_patch(app: &AppWindow, label: &str, f: impl FnOnce() -> Result<Vec<String>>) {
     append_log(app, label, f());
+}
+
+#[cfg(windows)]
+fn spawn_xiaoai_operation(
+    app_weak: slint::Weak<AppWindow>,
+    label: String,
+    operation: impl FnOnce() -> Result<Vec<String>> + Send + 'static,
+) {
+    std::thread::spawn(move || {
+        let result = operation();
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(app) = app_weak.upgrade() {
+                app.set_xiaoai_busy(false);
+                append_log(&app, &label, result);
+            }
+        });
+    });
 }
 
 #[cfg(windows)]
@@ -239,6 +257,26 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
         }
     });
 
+    app.on_apply_xiaoai({
+        let app_weak = app_weak.clone();
+        move || {
+            let app = app_weak.unwrap();
+            run_patch(&app, i18n::tr("gui.op.xiaoai.apply", lang), || {
+                ops::apply_xiaoai(None, false)
+            });
+        }
+    });
+
+    app.on_revert_xiaoai({
+        let app_weak = app_weak.clone();
+        move || {
+            let app = app_weak.unwrap();
+            run_patch(&app, i18n::tr("gui.op.xiaoai.revert", lang), || {
+                ops::revert_xiaoai(None, false)
+            });
+        }
+    });
+
     app.on_clear_log({
         let app_weak = app_weak.clone();
         move || {
@@ -370,6 +408,62 @@ fn setup_callbacks(app: &AppWindow, lang: i18n::Lang) {
             let label = i18n::tr("gui.op.install", lang).replace("{path}", &path_str);
             append_log(&app, &label, ops::install_from_path(&p));
             app.set_path_input("".into());
+        }
+    });
+
+    app.on_download_and_install_xiaoai({
+        let app_weak = app_weak.clone();
+        move |url: SharedString| {
+            let url = url.to_string();
+            if url.trim().is_empty() {
+                return;
+            }
+            let app = app_weak.unwrap();
+            app.set_xiaoai_busy(true);
+            let current: String = app.get_log_text().into();
+            let line = i18n::tr("gui.downloading.start", lang).replace("{url}", &url);
+            app.set_log_text(format!("{current}{line}\n").into());
+
+            spawn_xiaoai_operation(
+                app_weak.clone(),
+                i18n::tr("install.xiaoai.title", lang).to_string(),
+                move || ops::download_and_install_xiaoai(&url),
+            );
+        }
+    });
+
+    app.on_browse_xiaoai_installer({
+        let app_weak = app_weak.clone();
+        move || {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter(i18n::tr("gui.browse.filter", lang), &["exe"])
+                .set_title(i18n::tr("install.xiaoai.title", lang))
+                .pick_file()
+            {
+                let app = app_weak.unwrap();
+                app.set_xiaoai_path_input(path.display().to_string().into());
+            }
+        }
+    });
+
+    app.on_start_xiaoai_install({
+        let app_weak = app_weak.clone();
+        move |path: SharedString| {
+            let path = PathBuf::from(path.to_string());
+            if !path
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("exe"))
+            {
+                return;
+            }
+            let app = app_weak.unwrap();
+            app.set_xiaoai_busy(true);
+            app.set_xiaoai_path_input("".into());
+            let label = i18n::tr("gui.op.xiaoai.install", lang)
+                .replace("{path}", &path.display().to_string());
+            spawn_xiaoai_operation(app_weak.clone(), label, move || {
+                ops::install_xiaoai_from_path(&path)
+            });
         }
     });
 }

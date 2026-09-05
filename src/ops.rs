@@ -5,11 +5,11 @@
 
 use crate::{
     experimental::smbios_spoof,
-    install::{self, pc_manager_installer},
-    patches::{audio, camera, camera::dotnet, device, locale},
+    install::{self, pc_manager_installer, xiaoai_installer},
+    patches::{ai, audio, camera, camera::dotnet, device, locale},
     uninstall,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -46,8 +46,10 @@ pub const PROC_CAMERA: &[&str] = &["XiaomiPcManager"];
 pub const PROC_AUDIO: &[&str] = &["MiPCAudio", "MiPlayCastService", "MAFSvr", "MASFvr"];
 pub const PROC_DEVICE: &[&str] = &["XiaomiPcManager"];
 pub const PROC_SMBIOS: &[&str] = &["micont_service"];
+pub const PROC_XIAOAI: &[&str] = &["XiaoaiAgent"];
 
 const RESTART_HINT: &str = "提示：补丁已完成，请手动重新启动小米电脑管家使其生效。";
+const XIAOAI_RESTART_HINT: &str = "提示：请重启电脑，使超级小爱补丁完整生效。";
 
 /// 音频广播介质。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -72,6 +74,13 @@ pub fn full_features_available() -> bool {
     install::find_install_root().is_some()
 }
 
+/// 是否探测到任一版本的超级小爱。
+pub fn xiaoai_available() -> bool {
+    install::find_xiaoai_root()
+        .and_then(|root| xiaoai_installer::latest_version_dir(&root).ok())
+        .is_some()
+}
+
 /// 启动时关闭所有小米电脑管家相关进程，返回提示（无进程被关闭时返回 None）。
 pub fn close_all_on_startup() -> Option<String> {
     let n = install::kill_mipcmanager_processes(PROC_MIPCM_ALL);
@@ -83,10 +92,11 @@ pub fn close_all_on_startup() -> Option<String> {
 /// 生成与 CLI `status` 一致的状态文本行。
 pub fn status_lines() -> Vec<String> {
     let mut out = Vec::new();
-    out.push("== 小米电脑管家补丁状态 ==".to_string());
+    out.push("== 小米电脑管家 / 超级小爱补丁状态 ==".to_string());
     let manager_root = install::find_install_root();
     let continuity_root = install::find_pc_continuity_root();
-    if manager_root.is_none() && continuity_root.is_none() {
+    let xiaoai_root = install::find_xiaoai_root();
+    if manager_root.is_none() && continuity_root.is_none() && xiaoai_root.is_none() {
         out.push("未探测到安装目录（可用 --dll/--dir 手动指定）。".to_string());
         return out;
     }
@@ -106,6 +116,26 @@ pub fn status_lines() -> Vec<String> {
                 out.push(format!("运行时目录：{}", runtime_dir.display()));
                 push_file_status(&runtime_dir.join(locale::TARGET_DLL), &mut out);
                 out.push("  摄像头、音频流转和设备伪装：当前版本不可用".to_string());
+            }
+            Err(error) => out.push(format!("（无法确定版本目录：{error}）")),
+        }
+    }
+    if let Some(root) = xiaoai_root {
+        out.push(String::new());
+        out.push("-- 超级小爱 --".to_string());
+        out.push(format!("安装根目录：{}", root.display()));
+        match xiaoai_installer::latest_version_dir(&root) {
+            Ok(version) => {
+                out.push(format!("最新版本目录：{}", version.display()));
+                out.push(format!(
+                    "  {}: {}",
+                    ai::PROXY_DLL_NAME,
+                    if ai::current_state(&version) {
+                        "已就位"
+                    } else {
+                        "未就位"
+                    }
+                ));
             }
             Err(error) => out.push(format!("（无法确定版本目录：{error}）")),
         }
@@ -435,6 +465,52 @@ pub fn revert_device(dir: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>>
     Ok(log)
 }
 
+// ===================== 超级小爱 =====================
+
+pub fn apply_xiaoai(dir: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>> {
+    let dir = resolve_xiaoai_version_dir_or(dir)?;
+    let mut log = Vec::new();
+    run_patch(
+        &PatchOp {
+            procs: PROC_XIAOAI,
+            required: false,
+            no_kill,
+        },
+        &mut log,
+        || ai::apply(&dir),
+        |outcome| {
+            vec![match outcome {
+                ai::PatchOutcome::Patched => format!(
+                    "✓ 超级小爱补丁已应用：{}",
+                    dir.join(ai::PROXY_DLL_NAME).display()
+                ),
+                ai::PatchOutcome::AlreadyPatched => {
+                    format!("• 超级小爱补丁已就位（跳过）：{}", dir.display())
+                }
+            }]
+        },
+    )?;
+    log.push(XIAOAI_RESTART_HINT.to_string());
+    Ok(log)
+}
+
+pub fn revert_xiaoai(dir: Option<PathBuf>, no_kill: bool) -> Result<Vec<String>> {
+    let dir = resolve_xiaoai_version_dir_or(dir)?;
+    let mut log = Vec::new();
+    run_patch(
+        &PatchOp {
+            procs: PROC_XIAOAI,
+            required: false,
+            no_kill,
+        },
+        &mut log,
+        || ai::revert(&dir),
+        |_| vec![format!("✓ 已还原超级小爱补丁：{}", dir.display())],
+    )?;
+    log.push(XIAOAI_RESTART_HINT.to_string());
+    Ok(log)
+}
+
 // ===================== SMBIOS 伪装 =====================
 
 pub fn apply_smbios(
@@ -551,6 +627,32 @@ pub fn uninstall_product() -> Result<Vec<String>> {
 
 // ===================== 安装 =====================
 
+/// 下载并安装超级小爱，返回可直接呈现的完整操作日志。
+pub fn download_and_install_xiaoai(url: &str) -> Result<Vec<String>> {
+    let dir = pc_manager_installer::patcher_dir()?;
+    let installer = xiaoai_installer::download_installer(url, &dir)?;
+    let mut log = vec![format!("✓ 超级小爱安装包已下载：{}", installer.display())];
+    log.extend(install_xiaoai_from_path(&installer)?);
+    Ok(log)
+}
+
+/// 安装 Patcher 所在目录中唯一的超级小爱安装包，供 TUI 快速执行。
+pub fn install_local_xiaoai() -> Result<Vec<String>> {
+    let dir = pc_manager_installer::patcher_dir()?;
+    let installers = xiaoai_installer::find_local_installers(&dir)?;
+    match installers.as_slice() {
+        [installer] => install_xiaoai_from_path(installer),
+        [] => bail!(
+            "未在 {} 找到 XiaoaiAgent_Setup.exe 或 s6bK_XiaoaiAgent_3.5.0.220_31444585.exe",
+            dir.display()
+        ),
+        _ => bail!(
+            "在 {} 找到多个超级小爱安装包，请使用 CLI --installer 显式指定",
+            dir.display()
+        ),
+    }
+}
+
 /// 根据所选安装包安装小米电脑管家 / 小米互联：自动识别产品、校验共存、启动安装。
 pub fn install_from_path(installer: &Path) -> Result<Vec<String>> {
     let kind = pc_manager_installer::classify_installer(installer);
@@ -566,6 +668,30 @@ pub fn install_from_path(installer: &Path) -> Result<Vec<String>> {
             device::DEFAULT_MODEL
         ),
     ])
+}
+
+/// 安装超级小爱，等待安装器退出后向最新版本目录部署专用代理。
+pub fn install_xiaoai_from_path(installer: &Path) -> Result<Vec<String>> {
+    let installer = installer
+        .canonicalize()
+        .with_context(|| format!("无法解析安装包路径 {}", installer.display()))?;
+    let installer_dir = installer.parent().context("无法确定安装包所在目录")?;
+    ai::with_temporary_proxy(installer_dir, || {
+        xiaoai_installer::launch_installer_and_wait(&installer)
+    })?;
+    let root = install::find_xiaoai_root()
+        .context("安装器已退出，但未探测到超级小爱安装目录；请确认安装已经完成")?;
+    let version_dir = xiaoai_installer::latest_version_dir(&root)?;
+    let version = version_dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "未知版本".to_string());
+    let mut log = vec![format!(
+        "✓ 超级小爱安装程序已结束，检测到版本 {version}：{}",
+        installer.display()
+    )];
+    log.extend(apply_xiaoai(Some(version_dir), false)?);
+    Ok(log)
 }
 
 /// 校验所选安装包所属产品能否安装：两个产品不允许同时安装。
@@ -689,6 +815,20 @@ pub fn resolve_full_version_dir_or(explicit: Option<PathBuf>) -> Result<PathBuf>
         }
         Some(d) => bail!("指定的版本目录不存在：{}", d.display()),
         None => resolve_full_version_dir(),
+    }
+}
+
+/// 解析超级小爱最新版本目录。
+pub fn resolve_xiaoai_version_dir_or(explicit: Option<PathBuf>) -> Result<PathBuf> {
+    match explicit {
+        Some(path) => {
+            xiaoai_installer::ensure_version_dir(&path)?;
+            Ok(path)
+        }
+        None => {
+            let root = install::find_xiaoai_root().context("未探测到超级小爱安装目录")?;
+            xiaoai_installer::latest_version_dir(&root)
+        }
     }
 }
 

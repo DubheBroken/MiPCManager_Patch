@@ -1,6 +1,7 @@
 //! 小米电脑管家安装目录定位、版本目录解析、进程关闭与文件备份/还原。
 
 pub mod pc_manager_installer;
+pub mod xiaoai_installer;
 
 use anyhow::{Context, Result, bail};
 use std::fs;
@@ -12,6 +13,8 @@ pub const DEFAULT_INSTALL_ROOT: &str = r"C:\Program Files\MI\XiaomiPCManager";
 pub const DEFAULT_PC_CONTINUITY_ROOT: &str = r"C:\Program Files\MI\PcContinuity";
 /// 新版「互联互通 2.0」的默认安装根目录（HyperConnect）。
 pub const DEFAULT_HYPERCONNECT_ROOT: &str = r"C:\Program Files\MI\HyperConnect";
+/// 超级小爱的默认安装根目录。
+pub const DEFAULT_XIAOAI_ROOT: &str = r"C:\Program Files\MI\XiaoaiAgent";
 /// 新版 HyperConnect 的原生互联 DLL 相对版本目录的子路径。
 pub const HYPERCONNECT_NATIVE_REL: &str = r"resources\native-interconnect\win32";
 
@@ -27,6 +30,11 @@ pub fn find_pc_continuity_root() -> Option<PathBuf> {
         return Some(root);
     }
     find_product_root(DEFAULT_PC_CONTINUITY_ROOT, "PcContinuity")
+}
+
+/// 探测超级小爱安装根目录。
+pub fn find_xiaoai_root() -> Option<PathBuf> {
+    find_product_root(DEFAULT_XIAOAI_ROOT, "XiaoaiAgent")
 }
 
 /// 版本目录下的原生互联运行目录（目标 DLL 所在目录）。
