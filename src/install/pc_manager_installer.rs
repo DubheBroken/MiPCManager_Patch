@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::i18n;
+use crate::{i18n, infra::powershell::system_powershell_path};
 
 /// 安装包所属产品。
 ///
@@ -196,38 +196,6 @@ pub fn download_installer(url: &str, target_dir: &Path) -> Result<PathBuf> {
     fs::rename(&temporary, &target)
         .with_context(|| format!("无法将下载文件保存为 {}", target.display()))?;
     Ok(target)
-}
-
-#[cfg(windows)]
-fn system_powershell_path() -> Result<PathBuf> {
-    use std::ffi::OsString;
-    use std::os::windows::ffi::OsStringExt;
-    use windows_sys::Win32::System::SystemInformation::GetWindowsDirectoryW;
-
-    let mut buffer = vec![0_u16; 32_768];
-    // SAFETY: buffer 指向可写的 u16 数组，长度以 u32 准确传入。
-    let length = unsafe { GetWindowsDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) };
-    if length == 0 {
-        return Err(std::io::Error::last_os_error()).context("无法获取 Windows 系统目录");
-    }
-    if length as usize >= buffer.len() {
-        bail!("Windows 系统目录路径过长");
-    }
-    let windows_dir = PathBuf::from(OsString::from_wide(&buffer[..length as usize]));
-    let powershell = windows_dir
-        .join("System32")
-        .join("WindowsPowerShell")
-        .join("v1.0")
-        .join("powershell.exe");
-    if !powershell.is_file() {
-        bail!("未找到系统 Windows PowerShell：{}", powershell.display());
-    }
-    Ok(powershell)
-}
-
-#[cfg(not(windows))]
-fn system_powershell_path() -> Result<PathBuf> {
-    bail!("安装包下载仅支持 Windows PowerShell")
 }
 
 /// 启动安装包，返回子进程 PID。
